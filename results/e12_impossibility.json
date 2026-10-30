@@ -1,0 +1,33 @@
+[
+  {
+    "fraction_inside_hull": 1.0,
+    "hull_trials": 200,
+    "max_deviation_from_half_range": 8.881784197001252e-16,
+    "max_hull_violation": -6.399991608896372e-08,
+    "max_ratio_blind_over_minimax": 1.4634104821252982,
+    "mean_ratio_blind_over_minimax": 1.1276677812869398,
+    "min_ratio_blind_over_minimax": 1.0,
+    "minimax_bound_attained": true,
+    "minimax_trials": 300,
+    "property": "value_only_summaries_leave_the_merged_value_undetermined",
+    "reachable_set_is_interval": true,
+    "same_summary_different_dataset": {
+      "difference": 1.5452221782703508,
+      "example": {
+        "block_summary_A": {
+          "count": 2,
+          "mass": 2.0,
+          "value": 5.0
+        },
+        "block_summary_A2": {
+          "count": 2,
+          "mass": 40.171073846375336,
+          "value": 5.0
+        },
+        "same_value_and_count": true
+      },
+      "global_value_with_A": 3.3333333333333335,
+      "global_value_with_A2": 4.878555511603684
+    }
+  }
+]

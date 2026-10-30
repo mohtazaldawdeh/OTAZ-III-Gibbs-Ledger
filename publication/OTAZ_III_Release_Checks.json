@@ -1,0 +1,58 @@
+{
+  "release": "OTAZ III v3.0.0",
+  "date": "2026-10-28",
+  "author": "Al-Mu'taz Billah Salah Al-Dawoodiya",
+  "checks": {
+    "unit_tests": {
+      "command": "python -m unittest discover -s tests",
+      "result": "52/52 OK"
+    },
+    "independent_verifier": {
+      "command": "python scripts/otaz_verify_quantum.py",
+      "result": "56/56 checks passed (the verifier does not import the library)"
+    },
+    "experiments": {
+      "command": "python experiments/otaz_run_quantum.py",
+      "result": "sixteen experiments, nineteen JSON files (e1..e16 plus environment.json, source_hashes.json, verification.json)"
+    },
+    "figures": {
+      "command": "python otaz_make_figures.py",
+      "result": "eight figures, svg + png, monochrome, numbered in order of appearance"
+    },
+    "cover": {
+      "command": "python otaz_make_cover.py",
+      "result": "publication/OTAZ_III_Cover.png and .svg"
+    },
+    "manuscript": {
+      "command": "python paper/build_manuscript.py",
+      "result": "single-column PDF (34 pp) and IEEE-layout PDF (20 pp)"
+    },
+    "novelty_assessment": {
+      "source": "publication/OTAZ_III_Novelty_Assessment_AR.html",
+      "result": "one A4 page, Arabic, twelve statements classified with falsification conditions"
+    },
+    "checksums": {
+      "command": "python scripts/otaz_checksums.py --verify",
+      "result": "manifest verified"
+    },
+    "colour_audit": {
+      "policy": "black and white only",
+      "result": "figure scripts use black line art and markers only; no colour cycle is requested anywhere; tables use rules rather than shading"
+    }
+  },
+  "not_claimed": [
+    "peer review, acceptance or indexing",
+    "a reserved or published DOI (placeholder only until deposit)",
+    "an ORCID iD, until the author supplies the real one",
+    "quantum computational advantage or speed-up",
+    "priority over the classical results named in the prior-art table",
+    "that any proof in the paper has been checked by anyone other than the author and the verifier"
+  ],
+  "known_negative_results": [
+    "bootstrap coverage 0.892 and 0.900 against a nominal 0.95 in two of eight cells",
+    "certificate saturates at high beta with few shots (1.63 at beta = 3, m = 10)",
+    "quantisation bound of Theorem 5 proved but not attained (worst measured ratio 0.31); the constant is not claimed sharp",
+    "Helstrom floor is loose at high beta (mean slack 0.235 at beta = 8)",
+    "verification on one machine is determinism, not replication"
+  ]
+}

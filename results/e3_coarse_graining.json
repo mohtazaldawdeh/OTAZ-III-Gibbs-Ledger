@@ -1,0 +1,19 @@
+[
+  {
+    "bound_always_respected": true,
+    "equal_block_entropy": 1.0986122886681096,
+    "equal_block_scores_gap": 1.0986122886681098,
+    "identity_verified_le_1e-12": true,
+    "max_abs_identity_residual": 2.220446049250313e-15,
+    "max_gap": 5.170250517105773,
+    "max_ratio_gap_over_prediction": 1.0000000000000222,
+    "mean_gap": 1.3063002054669244,
+    "min_ratio_gap_over_prediction": 0.9999999999999937,
+    "property": "gap_equals_block_entropy_over_beta_and_is_bounded_by_ln_k_over_beta",
+    "reconstruction_error": 0.0,
+    "sharp_case_attains_bound": true,
+    "sharp_case_bound": 1.3862943611198906,
+    "sharp_case_gap": 1.3862943611198906,
+    "trials": 320
+  }
+]

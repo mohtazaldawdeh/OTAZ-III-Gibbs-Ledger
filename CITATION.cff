@@ -1,0 +1,58 @@
+cff-version: 1.2.0
+message: "If you use this software, its results or its figures, please cite this record and the related companion preprint. Do not reuse the companion DOI for this work."
+title: "OTAZ III: The Gibbs Ledger - Exact Aggregation, a Sharp Impossibility Theorem, and Certified Error Budgets for Scored-Record Fusion"
+abstract: >-
+  A standalone mathematical study of one operator: a temperature-scaled softmax
+  over scores normalising a weighted mean of values, carried alongside the scaled
+  log-partition sum. The paper proves that the pair is a commutative monoid and
+  merges exactly in any tree, that it is neither idempotent (a duplicate record
+  adds beta^-1 ln 2) nor homogeneous (the defect is 2.1932 at lambda = 2), and
+  then proves the negative result the title names: with value-only summaries the
+  set of global values compatible with the reports is the convex hull of the
+  reported values, the minimax merge rule is the midpoint, its worst-case error
+  is half the range and is attained, and no rule does better. A ledger quantised
+  to relative precision delta merges to within D delta / (1 - delta) for any
+  number of shards. On the positive side the paper gives a temperature calculus
+  (dV/dbeta = Cov(v,w), d2 lnZ / dbeta2 = Var(w)), a coarse-graining identity
+  gap = beta^-1 H(pi) with its Shannon chain rule, an error non-amplification
+  bound for the logit parametrisation, a composition of sampling and truncation
+  into one certified interval, and the boundary of the quantum reading (dephasing
+  contractivity, a Helstrom floor, no converse). Sixteen seeded experiments,
+  52 unit tests and a 56-check independent verifier regenerate every reported
+  number. Negative results are in the main text. No priority, peer-review or
+  quantum-advantage claim is made.
+version: 3.0.0
+date-released: "2026-10-28"
+license: PolyForm-Noncommercial-1.0.0
+license-url: "https://polyformproject.org/licenses/noncommercial/1.0.0"
+keywords:
+  - exponentially weighted fusion
+  - Gibbs distribution
+  - softmax
+  - log-sum-exp
+  - mergeable summaries
+  - impossibility theorem
+  - minimax lower bound
+  - quantisation
+  - certified error bound
+  - trace distance
+  - dephasing
+  - reproducible research
+  - OTAZ
+authors:
+  - family-names: Al-Dawoodiya
+    given-names: "Al-Mu'taz Billah Salah"
+    email: mohtazaldawdeh@gmail.com
+    affiliation: "Independent researcher"
+    alias: "المعتز بالله صلاح عبد ربه الداودية"
+references:
+  - type: software
+    title: "OTAZ: Exponentially Weighted Fusion - Algebraic Structure, Numerical Stability, and Reproducible Experiments"
+    authors:
+      - family-names: Al-Dawoodiya
+        given-names: "Al-Mu'taz Billah Salah"
+    version: 1.0.0
+    date-released: "2026-10-25"
+    doi: 10.5281/zenodo.23648070
+    repository-artifact: "https://doi.org/10.5281/zenodo.23648070"
+    license: CC-BY-NC-4.0

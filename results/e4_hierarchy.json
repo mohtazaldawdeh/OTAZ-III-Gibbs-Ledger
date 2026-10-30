@@ -1,0 +1,47 @@
+[
+  {
+    "chain_verified_le_1e-12": true,
+    "entropy_identity_verified_le_1e-12": true,
+    "max_abs_chain_residual": 8.881784197001252e-16,
+    "max_abs_entropy_identity_residual": 1.7763568394002505e-15,
+    "property": "shannon_chain_rule_governs_multi_level_coarse_graining",
+    "sample_rows": [
+      {
+        "beta": 4.0,
+        "entropy_fine": 0.8572943135014766,
+        "gap_coarse": 0.11076735080569433,
+        "gap_fine": 0.1995562239033889,
+        "within": 0.08878887309769459
+      },
+      {
+        "beta": 0.5,
+        "entropy_fine": 3.371107288633838,
+        "gap_coarse": 2.7399649210806105,
+        "gap_fine": 4.107712278189931,
+        "within": 1.3677473571093204
+      },
+      {
+        "beta": 1.5,
+        "entropy_fine": 2.582730885743288,
+        "gap_coarse": 0.8843724635751573,
+        "gap_fine": 1.2699250649546872,
+        "within": 0.38555260137952985
+      },
+      {
+        "beta": 1.5,
+        "entropy_fine": 2.40600625622853,
+        "gap_coarse": 0.7621506032412634,
+        "gap_fine": 1.072977440831989,
+        "within": 0.3108268375907256
+      },
+      {
+        "beta": 4.0,
+        "entropy_fine": 2.0375117941799132,
+        "gap_coarse": 0.28401619118914156,
+        "gap_fine": 0.3195977772443145,
+        "within": 0.035581586055172885
+      }
+    ],
+    "trials": 60
+  }
+]

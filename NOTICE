@@ -1,0 +1,36 @@
+OTAZ-III: Gibbs Weights as a Ledger - Exact Identities, Certified Error Budgets,
+and the Limits of the Quantum Analogy for the Fusion Formula of the OTAZ
+Compilation, Section 02
+Copyright 2026 Al-Mu'taz Billah Salah Al-Dawoodiya
+Contact: mohtazaldawdeh@gmail.com
+
+This repository contains material under two different licenses:
+
+1. Reference software (Python package, experiment scripts, verifier, figure and
+   cover scripts, workflow and configuration files):
+   PolyForm Noncommercial License 1.0.0 (see LICENSE).
+   Required Notice: Copyright 2026 Al-Mu'taz Billah Salah Al-Dawoodiya
+
+2. Manuscript text, figures, documentation and reported results:
+   Creative Commons Attribution-NonCommercial 4.0 International
+   (see LICENSES/CC-BY-NC-4.0.txt).
+
+Third-party components keep their own licenses. NumPy, SciPy, Matplotlib,
+WeasyPrint, pypdf and the DejaVu fonts are not redistributed here beyond what
+their licenses permit; see requirements*.txt for dependency names and consult
+each project for terms.
+
+Prior work by the same author, deposited separately and not relicensed here:
+"OTAZ: Exponentially Weighted Fusion - Algebraic Structure, Numerical Stability,
+and Reproducible Experiments" (v1.0.0, 25 October 2026),
+https://doi.org/10.5281/zenodo.23648070
+
+The manuscript is a standalone study: the object, the notation and the scope are
+defined inside the paper and in Section II, and no external corpus is
+redistributed or required. The repository contains no third-party data.
+
+No peer review, institutional endorsement, priority claim or quantum
+computational advantage claim is made by this repository or its DOI. The one
+statement offered as new is identified in Section IX and repeated, with its
+falsification conditions, in the Arabic novelty assessment accompanying the
+deposit.

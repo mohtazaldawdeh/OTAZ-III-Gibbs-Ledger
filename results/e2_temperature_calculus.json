@@ -1,0 +1,72 @@
+[
+  {
+    "all_identities_within_1e-4": true,
+    "finite_difference_step": 1e-06,
+    "max_abs_error_dV_dbeta": 2.9808200352476888e-09,
+    "max_abs_error_dW_dbeta": 2.7748399133997736e-09,
+    "max_abs_error_heat_capacity": 8.474731744566552e-07,
+    "property": "fluctuation_dissipation_and_heat_capacity_identities",
+    "self_scored_monotonicity": [
+      {
+        "beta": 0.1,
+        "dV_dbeta_self_scored": 2.2684097095838114,
+        "nonnegative": true,
+        "variance": 2.2684097095838114
+      },
+      {
+        "beta": 0.5,
+        "dV_dbeta_self_scored": 1.8374557493433321,
+        "nonnegative": true,
+        "variance": 1.8374557493433321
+      },
+      {
+        "beta": 2.0,
+        "dV_dbeta_self_scored": 0.16012253409366467,
+        "nonnegative": true,
+        "variance": 0.16012253409366464
+      },
+      {
+        "beta": 8.0,
+        "dV_dbeta_self_scored": 1.3837529685069093e-05,
+        "nonnegative": true,
+        "variance": 1.3837529685069091e-05
+      }
+    ],
+    "sensitivity_shape": [
+      {
+        "argmax_beta": 0.01,
+        "curve_end": 3.720075976020836e-44,
+        "curve_max": 1.9997400258310731,
+        "curve_start": 1.9997400258310731,
+        "label": "symmetric",
+        "monotone_decreasing": true,
+        "scores": [
+          -2.0,
+          -1.0,
+          0.0,
+          1.0,
+          2.0
+        ],
+        "sign_changes_of_derivative": 0,
+        "third_cumulant_at_beta_1": -1.127003121115438
+      },
+      {
+        "argmax_beta": 0.15427107962537775,
+        "curve_end": 4.8312415064422874e-303,
+        "curve_max": 17.862863198362678,
+        "curve_start": 13.096911879696858,
+        "label": "skewed",
+        "monotone_decreasing": false,
+        "scores": [
+          0.0,
+          1.0,
+          2.0,
+          3.0,
+          10.0
+        ],
+        "sign_changes_of_derivative": 1,
+        "third_cumulant_at_beta_1": -0.6164575746071699
+      }
+    ]
+  }
+]

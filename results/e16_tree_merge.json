@@ -1,0 +1,84 @@
+[
+  {
+    "configurations": 9,
+    "exact_to_double_precision": true,
+    "max_absolute_value_gap": 3.552713678800501e-15,
+    "max_relative_value_gap": 3.701334132510862e-16,
+    "max_score_gap": 0.0,
+    "property": "tree_merged_aggregates_equal_the_n_ary_aggregate",
+    "rows": [
+      {
+        "block_size": 1,
+        "blocks": 100,
+        "records": 100,
+        "score_gap": 0.0,
+        "value_gap": 1.7763568394002505e-15,
+        "value_gap_relative": 1.960809069301343e-16
+      },
+      {
+        "block_size": 10,
+        "blocks": 10,
+        "records": 100,
+        "score_gap": 0.0,
+        "value_gap": 1.7763568394002505e-15,
+        "value_gap_relative": 1.9953469809138025e-16
+      },
+      {
+        "block_size": 100,
+        "blocks": 1,
+        "records": 100,
+        "score_gap": 0.0,
+        "value_gap": 0.0,
+        "value_gap_relative": 0.0
+      },
+      {
+        "block_size": 1,
+        "blocks": 1000,
+        "records": 1000,
+        "score_gap": 0.0,
+        "value_gap": 1.7763568394002505e-15,
+        "value_gap_relative": 1.7338736391264912e-16
+      },
+      {
+        "block_size": 10,
+        "blocks": 100,
+        "records": 1000,
+        "score_gap": 0.0,
+        "value_gap": 1.7763568394002505e-15,
+        "value_gap_relative": 1.7973584260105116e-16
+      },
+      {
+        "block_size": 100,
+        "blocks": 10,
+        "records": 1000,
+        "score_gap": 0.0,
+        "value_gap": 3.552713678800501e-15,
+        "value_gap_relative": 3.701334132510862e-16
+      },
+      {
+        "block_size": 1,
+        "blocks": 10000,
+        "records": 10000,
+        "score_gap": 0.0,
+        "value_gap": 1.7763568394002505e-15,
+        "value_gap_relative": 1.8154840020502155e-16
+      },
+      {
+        "block_size": 10,
+        "blocks": 1000,
+        "records": 10000,
+        "score_gap": 0.0,
+        "value_gap": 0.0,
+        "value_gap_relative": 0.0
+      },
+      {
+        "block_size": 100,
+        "blocks": 100,
+        "records": 10000,
+        "score_gap": 0.0,
+        "value_gap": 3.552713678800501e-15,
+        "value_gap_relative": 3.6185103948972184e-16
+      }
+    ]
+  }
+]

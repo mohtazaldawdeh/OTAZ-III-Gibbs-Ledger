@@ -1,0 +1,7 @@
+{
+  "python": "3.13.16",
+  "numpy": "2.3.5",
+  "platform": "Linux-6.1.158+-x86_64-with-glibc2.41",
+  "seed": 2026110101,
+  "process_cpu_seconds_not_scientific": 30.139
+}

@@ -1,0 +1,131 @@
+[
+  {
+    "certificate_violations": 0,
+    "coverage": [
+      {
+        "beta": 1.0,
+        "coverage_95_bootstrap": 0.9583333333333334,
+        "shots": 10
+      },
+      {
+        "beta": 1.0,
+        "coverage_95_bootstrap": 0.8916666666666667,
+        "shots": 100
+      },
+      {
+        "beta": 1.0,
+        "coverage_95_bootstrap": 0.9666666666666667,
+        "shots": 1000
+      },
+      {
+        "beta": 1.0,
+        "coverage_95_bootstrap": 0.9666666666666667,
+        "shots": 10000
+      },
+      {
+        "beta": 3.0,
+        "coverage_95_bootstrap": 0.9833333333333333,
+        "shots": 10
+      },
+      {
+        "beta": 3.0,
+        "coverage_95_bootstrap": 0.975,
+        "shots": 100
+      },
+      {
+        "beta": 3.0,
+        "coverage_95_bootstrap": 0.95,
+        "shots": 1000
+      },
+      {
+        "beta": 3.0,
+        "coverage_95_bootstrap": 0.9,
+        "shots": 10000
+      }
+    ],
+    "note": "at beta=3 with ten shots the L1 certificate saturates at 1 and carries no information",
+    "property": "finite_shot_budget_analytic_certificate_and_bootstrap_coverage",
+    "rows": [
+      {
+        "beta": 1.0,
+        "mean_certificate": 1.3689456687330899,
+        "mean_l1_error": 0.5766436508855695,
+        "mean_value_error": 0.08645589296450672,
+        "median_certificate": 1.5251493844869732,
+        "p95_value_error": 0.21109808506657585,
+        "replications": 120,
+        "shots": 10
+      },
+      {
+        "beta": 1.0,
+        "mean_certificate": 0.3763385600738984,
+        "mean_l1_error": 0.19415371423766675,
+        "mean_value_error": 0.039053189147761055,
+        "median_certificate": 0.3660145997774067,
+        "p95_value_error": 0.09667876621482506,
+        "replications": 120,
+        "shots": 100
+      },
+      {
+        "beta": 1.0,
+        "mean_certificate": 0.09332916362895695,
+        "mean_l1_error": 0.057260260052716436,
+        "mean_value_error": 0.012174814535807606,
+        "median_certificate": 0.09268086295094799,
+        "p95_value_error": 0.026343920566015318,
+        "replications": 120,
+        "shots": 1000
+      },
+      {
+        "beta": 1.0,
+        "mean_certificate": 0.027698880901896063,
+        "mean_l1_error": 0.017801360445392895,
+        "mean_value_error": 0.0037816158731179246,
+        "median_certificate": 0.026233489834905248,
+        "p95_value_error": 0.009358851411972824,
+        "replications": 120,
+        "shots": 10000
+      },
+      {
+        "beta": 3.0,
+        "mean_certificate": 1.62673039888913,
+        "mean_l1_error": 0.51058406803026,
+        "mean_value_error": 0.10170200800927852,
+        "median_certificate": 1.9292543569059695,
+        "p95_value_error": 0.2626044974320013,
+        "replications": 120,
+        "shots": 10
+      },
+      {
+        "beta": 3.0,
+        "mean_certificate": 0.40296250306839654,
+        "mean_l1_error": 0.1635699800772378,
+        "mean_value_error": 0.04854393264160348,
+        "median_certificate": 0.3922351979697058,
+        "p95_value_error": 0.10880297465428727,
+        "replications": 120,
+        "shots": 100
+      },
+      {
+        "beta": 3.0,
+        "mean_certificate": 0.11383457298604954,
+        "mean_l1_error": 0.05328330281365387,
+        "mean_value_error": 0.016633142466369703,
+        "median_certificate": 0.10776518202055499,
+        "p95_value_error": 0.03775106041548758,
+        "replications": 120,
+        "shots": 1000
+      },
+      {
+        "beta": 3.0,
+        "mean_certificate": 0.03616492035543874,
+        "mean_l1_error": 0.017659674523746623,
+        "mean_value_error": 0.0059881232753105605,
+        "median_certificate": 0.03602097905869134,
+        "p95_value_error": 0.015295476583443135,
+        "replications": 120,
+        "shots": 10000
+      }
+    ]
+  }
+]

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<title>دليل النشر خطوة بخطوة — OTAZ III</title>
+<style>
+@page { size: A4; margin: 10mm 11mm 10mm 11mm;
+        @bottom-center { content: counter(page); font-size: 8pt; } }
+body { font-family: "DejaVu Sans", sans-serif; font-size: 7.9pt; line-height: 1.42; color: #000; }
+h1 { font-size: 15pt; margin: 0 0 1mm 0; text-align: center; }
+.sub { text-align: center; font-size: 8pt; margin: 0 0 2mm 0; line-height: 1.5; }
+.rule { border-top: 1.2pt solid #000; margin: 1.5mm 0 2.5mm 0; }
+h2 { font-size: 9.8pt; margin: 2.6mm 0 1mm 0; border-bottom: 0.6pt solid #000; padding-bottom: 0.6mm; page-break-after: avoid; }
+h3 { font-size: 8.5pt; margin: 2mm 0 0.8mm 0; page-break-after: avoid; }
+p { margin: 0 0 1.1mm 0; text-align: justify; }
+ol, ul { margin: 0 0 1.4mm 0; padding-right: 5mm; }
+li { margin: 0 0 0.7mm 0; }
+table { border-collapse: collapse; width: 100%; font-size: 7.15pt; margin: 1mm 0 2mm 0; page-break-inside: avoid; }
+th, td { border: 0.4pt solid #000; padding: 0.8mm 1.2mm; vertical-align: top; text-align: right; }
+th { font-weight: bold; }
+td.c, th.c { text-align: center; }
+code, .mono { font-family: "DejaVu Sans Mono", monospace; font-size: 7pt; direction: ltr; unicode-bidi: embed; }
+pre { font-family: "DejaVu Sans Mono", monospace; font-size: 7pt; direction: ltr; text-align: left;
+      border: 0.5pt solid #000; padding: 1.6mm 2mm; white-space: pre-wrap; margin: 1mm 0 2mm 0;
+      page-break-inside: avoid; }
+.box { border: 0.7pt solid #000; padding: 1.6mm 2.2mm; margin: 1.2mm 0 2mm 0; page-break-inside: avoid; }
+.warn { border: 0.7pt dashed #000; padding: 1.6mm 2.2mm; margin: 1.2mm 0 2mm 0; page-break-inside: avoid; }
+.lbl { font-weight: bold; }
+.small { font-size: 7.4pt; }
+.foot { border-top: 0.8pt solid #000; margin-top: 3mm; padding-top: 1.2mm; font-size: 7.4pt; text-align: center; }
+ul.chk { list-style: none; padding-right: 1mm; }
+ul.chk li:before { content: "☐  "; font-family: "DejaVu Sans"; }
+</style></head><body>
+
+<h1>دليل النشر الكامل — OTAZ III</h1>
+<p class="sub">خطوة بخطوة، مع أسماء الملفات التي تُرفع على كل منصة، والخيارات التي تُختار في كل حقل.<br>
+الوديعة: <span class="mono">OTAZ III: The Gibbs Ledger</span> · نسخة ٣٫٠٫٠ · ٢٨ أكتوبر ٢٠٢٦ · المؤلف: المعتز بالله صلاح عبد ربه الداودية</p>
+<div class="rule"></div>
+
+<h2>٠. الترتيب الإلزامي للخطوات (لماذا هذا الترتيب)</h2>
+<p>الترتيب ليس تفضيلًا: معرّف <span class="mono">DOI</span> لا يوجد إلا بعد النشر على زينودو، وملفاتك تحمل حقلًا له، فالترتيب الصحيح هو: <b>تحقق محلي ← GitHub ← زينودو (إنشاء السجل وحجز الـDOI) ← إدخال الـDOI في الملفات وإعادة البناء ← إعادة رفع الملفات النهائية ← النشر ← ORCID ← لينكدإن</b>. هذا يضمن أن كل ملف تُنشره يحمل معرّفه الصحيح، وأن بصمات <span class="mono">SHA-256</span> صحيحة عند النشر لا بعده.</p>
+
+<table>
+<thead><tr><th class="c" style="width:6%">#</th><th style="width:26%">الخطوة</th><th style="width:20%">المنصة</th><th>الناتج الذي تنتقل به للخطوة التالية</th></tr></thead>
+<tbody>
+<tr><td class="c">١</td><td>تحقق محلي وتشغيل كل شيء</td><td>جهازك</td><td>ملفات محدَّثة وبصمات سليمة</td></tr>
+<tr><td class="c">٢</td><td>إنشاء المستودع ورفع الشيفرة</td><td>GitHub</td><td>رابط مستودع (لا يُذكر في الوديعة قبل وجوده)</td></tr>
+<tr><td class="c">٣</td><td>إنشاء الإصدار <span class="mono">v3.0.0</span> مع الأرشيف</td><td>GitHub</td><td>ملف <span class="mono">OTAZ_III.zip</span> مرفق بالإصدار</td></tr>
+<tr><td class="c">٤</td><td>سجل جديد + رفع الملفات + حجز <span class="mono">DOI</span></td><td>Zenodo</td><td><b>الـDOI</b> (قبل النشر)</td></tr>
+<tr><td class="c">٥</td><td>إدخال الـDOI في الملفات وإعادة البناء والرفع</td><td>جهازك ← Zenodo</td><td>ملفات نهائية تحمل المعرّف</td></tr>
+<tr><td class="c">٦</td><td>النشر (Publish)</td><td>Zenodo</td><td>رابط الوديعة العام</td></tr>
+<tr><td class="c">٧</td><td>إضافة العمل إلى السيرة</td><td>ORCID</td><td>سجل مرتبط بالـDOI</td></tr>
+<tr><td class="c">٨</td><td>المنشور والصورة</td><td>LinkedIn</td><td>وصول إلى الوديعة</td></tr>
+</tbody></table>
+
+<h2>١. الملفات: ما يُرفع وأين، بالاسم الدقيق</h2>
+<p>كل الملفات في مجلد <span class="mono">publication/</span> ما لم يُذكر غير ذلك. الأحجام تقريبية وتُذكر للتمييز فقط.</p>
+
+<table>
+<thead><tr><th style="width:33%">اسم الملف</th><th class="c" style="width:9%">الحجم</th><th style="width:24%">ما هو</th><th class="c" style="width:8%">GitHub</th><th class="c" style="width:8%">Zenodo</th><th class="c" style="width:8%">LinkedIn</th></tr></thead>
+<tbody>
+<tr><td class="mono">OTAZ_III_Gibbs_Ledger_EN.pdf</td><td class="c">315 KB</td><td>المتن، ٣٤ صفحة</td><td class="c">نعم</td><td class="c">نعم</td><td class="c">اختياري</td></tr>
+<tr><td class="mono">OTAZ_III_Gibbs_Ledger_EN_IEEE_layout.pdf</td><td class="c">328 KB</td><td>المتن، عمودان، ٢٠ صفحة</td><td class="c">نعم</td><td class="c">نعم</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Novelty_Assessment_AR.pdf</td><td class="c">37 KB</td><td>تقييم الجدة، صفحة واحدة</td><td class="c">نعم</td><td class="c">نعم</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Cover.png</td><td class="c">516 KB</td><td>الغلاف A4</td><td class="c">نعم</td><td class="c">نعم</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Social_Card.png</td><td class="c">213 KB</td><td>بطاقة المنشور ١٢٠٠×١٢٠٠</td><td class="c">نعم</td><td class="c">نعم</td><td class="c"><b>نعم</b></td></tr>
+<tr><td class="mono">OTAZ_III.zip</td><td class="c">2.4 MB</td><td>الوديعة كاملة (٩٢ مُدخلًا)</td><td class="c"><b>نعم</b></td><td class="c"><b>نعم</b></td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Abstract.md</td><td class="c">3 KB</td><td>الخلاصة نصًّا</td><td class="c">نعم</td><td class="c">—</td><td class="c">مصدر للنص</td></tr>
+<tr><td class="mono">OTAZ_III_Zenodo_Metadata.json</td><td class="c">4 KB</td><td>حقول زينودو جاهزة</td><td class="c">نعم</td><td class="c">مرجع</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Citation.bib</td><td class="c">1 KB</td><td>BibTeX</td><td class="c">نعم</td><td class="c">—</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_LinkedIn_Post.md</td><td class="c">5 KB</td><td>نص المنشور الإنجليزي</td><td class="c">نعم</td><td class="c">—</td><td class="c"><b>مصدر</b></td></tr>
+<tr><td class="mono">OTAZ_III_Social_Card_wide.png</td><td class="c">182 KB</td><td>بطاقة ١٢٠٠×٦٢٧</td><td class="c">نعم</td><td class="c">نعم</td><td class="c">بديل</td></tr>
+<tr><td class="mono">OTAZ_III_Research_Package.zip</td><td class="c">875 KB</td><td>الشيفرة والنتائج فقط</td><td class="c">نعم</td><td class="c">بديل</td><td class="c">—</td></tr>
+<tr><td class="mono">OTAZ_III_Publication_Kit.zip</td><td class="c">1.5 MB</td><td>الملفات المنشورة فقط</td><td class="c">نعم</td><td class="c">بديل</td><td class="c">—</td></tr>
+</tbody></table>
+
+<div class="box"><span class="lbl">القاعدة في الرفع:</span> على <b>زينودو</b> ارفع ستة ملفات فقط: المقالتان، وتقييم الجدة، والغلاف، وبطاقة المنشور، و<span class="mono">OTAZ_III.zip</span>. أمّا الحزمتان الأصغر فبديلٌ لا يُستخدم مع الأرشيف الكامل، لأن الأرشيف يحتويهما محتوىً لا ملفين. وعلى <b>GitHub</b> ارفع الشجرة كلها عبر <span class="mono">git</span> (لا رفعًا يدويًا)، ثم أرفق <span class="mono">OTAZ_III.zip</span> والملفات الثلاثة الرئيسة كأصول في الإصدار.</div>
+
+<h2>٢. GitHub — خطوة بخطوة</h2>
+
+<h3>٢٫١ إنشاء المستودع</h3>
+<ol>
+<li>الحساب: <span class="mono">github.com</span> ← زر <span class="mono">+</span> أعلى اليمين ← <span class="mono">New repository</span>.</li>
+<li><span class="lbl">Repository name:</span> <span class="mono">OTAZ-III-Gibbs-Ledger</span> — بهذا الشكل بالضبط (اسم المشروع يبدأ بـ<span class="mono">OTAZ</span>، والاسم الشخصي لا يدخل في اسم المستودع).</li>
+<li><span class="lbl">Description:</span> <span class="mono">Exact aggregation, a sharp impossibility theorem, and certified error budgets for scored-record fusion (preprint)</span></li>
+<li><span class="lbl">Visibility:</span> <span class="mono">Public</span> — العام إلزامي ليعمل الربط مع زينودو ولينكدإن.</li>
+<li><b>لا تُضِف</b> <span class="mono">README</span> ولا <span class="mono">.gitignore</span> ولا <span class="mono">license</span> من الصفحة: الملفات موجودة في المشروع، وإضافتها تُنشئ تعارضًا عند أول دفع.</li>
+<li><span class="lbl">Create repository</span>.</li>
+</ol>
+
+<h3>٢٫٢ رفع الشجرة من جهازك</h3>
+<pre>cd otaz_fusion_quantum
+git init
+git add .
+git commit -m "OTAZ III v3.0.0: manuscript, code, results, figures, novelty assessment"
+git branch -M main
+git remote add origin https://github.com/&lt;USERNAME&gt;/OTAZ-III-Gibbs-Ledger.git
+git push -u origin main</pre>
+<p>استبدل <span class="mono">&lt;USERNAME&gt;</span> باسم حسابك. لا تُشغّل <span class="mono">git add</span> من مجلد أعلى يحتوي على أرشيفات أو ملفات شخصية.</p>
+
+<h3>٢٫٣ الخيارات التي تُضبط على المستودع (Settings)</h3>
+<table>
+<thead><tr><th style="width:30%">الحقل / الخيار</th><th>القيمة التي تختارها</th></tr></thead>
+<tbody>
+<tr><td>About ← Description</td><td>كما في ٢٫١</td></tr>
+<tr><td>About ← Website</td><td>رابط زينودو بعد الخطوة ٦ (اتركه فارغًا الآن)</td></tr>
+<tr><td>About ← Topics (وسوم)</td><td><span class="mono">gibbs-distribution</span>, <span class="mono">softmax</span>, <span class="mono">log-sum-exp</span>, <span class="mono">mergeable-summaries</span>, <span class="mono">impossibility-theorem</span>, <span class="mono">minimax</span>, <span class="mono">distributed-aggregation</span>, <span class="mono">reproducibility</span>, <span class="mono">preprint</span></td></tr>
+<tr><td>Settings ← Features ← Wikis / Projects</td><td>أطفئهما (غير مستخدمين)</td></tr>
+<tr><td>Settings ← Features ← Issues</td><td>أبقِه مفعّلًا: قناة الاعتراض العلمي التي يطلبها المتن</td></tr>
+<tr><td>Settings ← Pages</td><td>اتركه معطّلًا</td></tr>
+<tr><td>License (يظهر تلقائيًا)</td><td>لن يتعرّف GitHub على الترخيص المختلط ويكتب <span class="mono">View license</span> — هذا متوقّع وصحيح؛ الترخيص مفصّل في <span class="mono">LICENSING.md</span> و<span class="mono">NOTICE</span></td></tr>
+</tbody></table>
+
+<h3>٢٫٤ التحقق قبل الإصدار</h3>
+<ol>
+<li>افتح تبويب <span class="mono">Actions</span>: سير العمل <span class="mono">OTAZ-III tests</span> يجب أن يمرّ أخضر (اختبارات، تجارب، أشكال، مدقّق، بصمات).</li>
+<li>افتح <span class="mono">publication/</span> على GitHub وتأكّد أن ملفات الـ<span class="mono">PDF</span> تُعرَض بحجمها الصحيح (لا تُرفع بـ Git LFS).</li>
+</ol>
+
+<h3>٢٫٥ إنشاء الإصدار <span class="mono">v3.0.0</span></h3>
+<ol>
+<li><span class="mono">Releases</span> ← <span class="mono">Draft a new release</span>.</li>
+<li><span class="lbl">Choose a tag:</span> اكتب <span class="mono">v3.0.0</span> ← <span class="mono">Create new tag on publish</span>.</li>
+<li><span class="lbl">Release title:</span> <span class="mono">OTAZ III — The Gibbs Ledger (v3.0.0)</span></li>
+<li><span class="lbl">Describe this release:</span> الصق الخلاصة من <span class="mono">publication/OTAZ_III_Abstract.md</span>، وأضف سطرًا: <span class="mono">Preprint. Not peer reviewed.</span></li>
+<li><span class="lbl">Attach binaries</span> — أرفق أربعة ملفات بالاسم الدقيق:
+<ul>
+<li><span class="mono">OTAZ_III.zip</span></li>
+<li><span class="mono">OTAZ_III_Gibbs_Ledger_EN.pdf</span></li>
+<li><span class="mono">OTAZ_III_Gibbs_Ledger_EN_IEEE_layout.pdf</span></li>
+<li><span class="mono">OTAZ_III_Novelty_Assessment_AR.pdf</span></li>
+</ul></li>
+<li>لا تضع علامة <span class="mono">Set as the latest release</span> إن كان لديك إصدار أقدم لورقة أخرى في المستودع نفسه — هنا المستودع جديد فتكون العلامة صحيحة.</li>
+<li><span class="lbl">Publish release</span>.</li>
+</ol>
+<div class="warn"><span class="lbl">تحذير:</span> لا تكتب في وصف الإصدار أي <span class="mono">DOI</span> قبل الخطوة ٦. إن احتجت، عدّل الوصف بعد النشر — التعديل مسموح ولا يغيّر الوسم.</div>
+
+<h2>٣. زينودو — خطوة بخطوة</h2>
+
+<h3>٣٫١ قبل الرفع</h3>
+<ul>
+<li>افتح حسابًا على <span class="mono">zenodo.org</span> وسجّل الدخول.</li>
+<li><b>لا تربط GitHub في هذه النسخة.</b> الربط يُنشئ السجل تلقائيًا من بيانات المستودع، وهذا يمنعك من ضبط الوصف العربي/الإنجليزي الطويل وحقل العلاقة بالوديعة السابقة. الربط مفيد في النسخ التالية فقط.</li>
+<li>جهّز الملفات الستة من الجدول أعلاه في مجلد واحد.</li>
+</ul>
+
+<h3>٣٫٢ إنشاء السجل ورفع الملفات</h3>
+<ol>
+<li><span class="mono">New upload</span> (أو <span class="mono">Upload</span>).</li>
+<li><span class="lbl">Files</span> ← <span class="mono">Drag and drop</span> أو <span class="mono">Choose files</span> ← ارفع:
+<span class="mono">OTAZ_III_Gibbs_Ledger_EN.pdf</span>، <span class="mono">OTAZ_III_Gibbs_Ledger_EN_IEEE_layout.pdf</span>، <span class="mono">OTAZ_III_Novelty_Assessment_AR.pdf</span>، <span class="mono">OTAZ_III_Cover.png</span>، <span class="mono">OTAZ_III_Social_Card.png</span>، <span class="mono">OTAZ_III.zip</span>.</li>
+<li>لا ترفع الملفات المضغوطة الصغيرة مع الأرشيف الكبير، ولا ترفع <span class="mono">.json</span> النتائج منفردة: كلها داخل الأرشيف.</li>
+</ol>
+
+<h3>٣٫٣ الحقول: الخيار الذي تختاره في كل حقل</h3>
+<table>
+<thead><tr><th style="width:26%">الحقل</th><th style="width:37%">القيمة المختارة</th><th>من أين تأتي</th></tr></thead>
+<tbody>
+<tr><td>Upload type</td><td><b>Publication</b></td><td>—</td></tr>
+<tr><td>Publication type</td><td><b>Preprint</b></td><td>لا تختار Article: العمل لم يُحكَّم ولم يُقبل</td></tr>
+<tr><td>DOI</td><td><b>Leave empty</b> ثم <span class="mono">Reserve DOI</span></td><td>زينودو يولّده</td></tr>
+<tr><td>Title</td><td><span class="mono">OTAZ III: The Gibbs Ledger - Exact Aggregation, a Sharp Impossibility Theorem, and Certified Error Budgets for Scored-Record Fusion</span></td><td>حقل <span class="mono">title</span> في <span class="mono">OTAZ_III_Zenodo_Metadata.json</span></td></tr>
+<tr><td>Authors ← Name</td><td><span class="mono">Al-Dawoodiya, Al-Mu'taz Billah Salah</span></td><td>كما هو؛ الصيغة عائلة، اسم</td></tr>
+<tr><td>Authors ← Affiliation</td><td><span class="mono">Independent researcher</span></td><td>—</td></tr>
+<tr><td>Authors ← ORCID</td><td><b>معرّفك الحقيقي فقط</b> — لا تكتب شيئًا إن لم يكن جاهزًا</td><td>لا تخترع رقمًا</td></tr>
+<tr><td>Description</td><td>الصق قيمة الحقل <span class="mono">description</span> كاملة (وسوم HTML مقبولة)</td><td><span class="mono">OTAZ_III_Zenodo_Metadata.json</span></td></tr>
+<tr><td>Keywords</td><td>الأربعة عشر كلمة في حقل <span class="mono">keywords</span>: <span class="mono">Gibbs distribution; softmax; log-sum-exp; mergeable summaries; impossibility theorem; minimax lower bound; quantisation error; coarse graining; certified error bounds; trace distance; dephasing; Helstrom bound; reproducible research; OTAZ</span></td><td>الملف نفسه</td></tr>
+<tr><td>Publication date</td><td><span class="mono">2026-10-28</span></td><td>تاريخ النسخة</td></tr>
+<tr><td>Language</td><td><b>English</b></td><td>المتن إنجليزي</td></tr>
+<tr><td>Version</td><td><span class="mono">3.0.0</span></td><td>—</td></tr>
+<tr><td>License</td><td><b>Creative Commons Attribution Non Commercial 4.0 International</b> (CC BY-NC 4.0)</td><td>الشيفرة داخل الأرشيف بترخيص PolyForm، منصوص عليه في <span class="mono">LICENSING.md</span></td></tr>
+<tr><td>Related works ← Identifier</td><td><span class="mono">10.5281/zenodo.23648070</span></td><td>الوديعة المرافقة</td></tr>
+<tr><td>Related works ← Relation</td><td><b>is supplement to</b></td><td>—</td></tr>
+<tr><td>Related works ← Resource type</td><td><b>Publication / Preprint</b></td><td>—</td></tr>
+<tr><td>Visibility</td><td><b>Public</b></td><td>—</td></tr>
+<tr><td>Communities</td><td>اتركه فارغًا</td><td>الانضمام إلى مجتمع قراره ليس بيدك</td></tr>
+<tr><td>Notes (إن ظهر)</td><td><b>Preprint. Not peer reviewed. No quantum computational advantage is claimed.</b></td><td>حقل <span class="mono">notes</span></td></tr>
+</tbody></table>
+
+<h3>٣٫٤ حجز الـDOI ثم إدخاله في الملفات</h3>
+<ol>
+<li>اضغط <span class="mono">Reserve DOI</span> ← سيظهر رقم من شكل <span class="mono">10.5281/zenodo.XXXXXXXX</span> ← انسخه.</li>
+<li>على جهازك، ضع الرقم في أربعة مواضع (كلها في الوديعة): <span class="mono">CITATION.cff</span> (حقل <span class="mono">doi</span>)، <span class="mono">README.md</span> (بند الاستشهاد)، <span class="mono">publication/OTAZ_III_Citation.bib</span> (حقل <span class="mono">doi</span>)، و<span class="mono">publication/OTAZ_III_Zenodo_Metadata.json</span> (سطر الملاحظات).</li>
+<li>أعِد البناء بهذا التسلسل بالضبط (التسلسل يحمي بصمات <span class="mono">SHA-256</span>):</li>
+</ol>
+<pre>python experiments/otaz_run_quantum.py
+python otaz_make_figures.py
+python otaz_make_cover.py
+python otaz_make_social_card.py
+python -m unittest discover -s tests
+python scripts/otaz_verify_quantum.py
+python paper/build_manuscript.py
+python publication/otaz_build_novelty_ar.py
+python scripts/otaz_checksums.py
+python experiments/otaz_run_quantum.py
+python publication/build_packages.py
+python scripts/otaz_build_master_zip.py
+python scripts/otaz_checksums.py --verify</pre>
+<p class="small">السطران الأخيران قبل الأخير يضمنان أن البصمات وُلدت بعد آخر تعديل. إن ظهر خلل في <span class="mono">--verify</span> فلا تنشر: أعِد تشغيل السلسلة من أوّلها.</p>
+
+<h3>٣٫٥ استبدال الملفات ثم النشر</h3>
+<ol>
+<li>عُد إلى مسودة زينودو ← احذف الملفات الستة القديمة ← ارفع النسخ المبنية من جديد بالأسماء نفسها.</li>
+<li>راجع المعاينة: العنوان، المؤلف، الترخيص، العلاقة بالوديعة السابقة، وعدد الملفات (ستة).</li>
+<li><span class="mono">Publish</span>.</li>
+<li>بعد النشر: انسخ رابط السجل <span class="mono">https://zenodo.org/records/XXXXXXXX</span> — هذا هو الرابط الذي يدخل في المنشور، وفي حقل <span class="mono">Website</span> على GitHub، وفي <span class="mono">ORCID</span>.</li>
+</ol>
+<div class="box"><span class="lbl">النسخ التالية:</span> أي تصحيح لاحق لا يُعاد رفعه على السجل نفسه، بل عبر <span class="mono">New version</span>: يحتفظ بالـ<span class="mono">Concept DOI</span> ويُعطي رقمًا للنسخة. رقم النسخة الحالية يُكتب في الاستشهاد، ورقم المفهوم في الإشارات العامة.</div>
+
+<h2>٤. ORCID — خطوة بخطوة</h2>
+<ol>
+<li>الدخول ← <span class="mono">Works</span> ← <span class="mono">Add</span> ← <span class="mono">Add work with DOI</span>.</li>
+<li>ألصق الـ<span class="mono">DOI</span> ← <span class="mono">Retrieve</span>؛ ستُملأ الحقول تلقائيًا من زينودو.</li>
+<li>راجع: <span class="lbl">Work type</span> = <b>Preprint</b>، <span class="lbl">Title</span> كما هو، <span class="lbl">Year</span> = 2026، <span class="lbl">Language</span> = English، <span class="lbl">Visibility</span> = <b>Public</b>.</li>
+<li><span class="mono">Add</span>. لا ترفع ملف PDF إلى ORCID: ORCID يستضيف البيانات الوصفية لا الملف.</li>
+<li>كرّر للأوراق السابقة إن لم تكن مضافة (الوديعة المرافقة <span class="mono">10.5281/zenodo.23648070</span>).</li>
+</ol>
+
+<h2>٥. لينكدإن — المنشور والصورة</h2>
+<h3>٥٫١ الخيار أ (الموصى به): صورة + رابط في متن المنشور</h3>
+<ol>
+<li><span class="mono">Start a post</span> ← الصق النص الكامل من <span class="mono">publication/OTAZ_III_LinkedIn_Post.md</span> (القسم «The post»).</li>
+<li>استبدل <span class="mono">ZENODO-LINK</span> برابط السجل من ٣٫٥.</li>
+<li><span class="mono">Add media</span> ← <span class="mono">Add a photo</span> ← <span class="mono">publication/OTAZ_III_Social_Card.png</span> (١٢٠٠×١٢٠٠).</li>
+<li><span class="lbl">Alt text</span>: <span class="mono">OTAZ III social card: value-only merging leaves the answer anywhere in the convex hull; the worst case is half the range.</span></li>
+<li>لا تُضِف ملف PDF مع الصورة، ولا تُرفق الأرشيف: الرابط يكفي.</li>
+<li>انشر، ثم ثبّت المنشور على صفحتك (<span class="mono">Pin post</span>) إن كان هذا عملًا رئيسيًا لك.</li>
+</ol>
+
+<h3>٥٫٢ الخيار ب: مستند PDF متحرّك (Carousel) والرابط في أول تعليق</h3>
+<ul>
+<li>أرفق <span class="mono">OTAZ_III_Gibbs_Ledger_EN.pdf</span> كـ<span class="mono">Document</span> بدل الصورة، واحفظ البطاقة للتعليق.</li>
+<li>اكتب المنشور نفسه، وابدأ أول تعليق بالرابط ثم عُد وحرّر المنشور وأضف: «الرابط في أول تعليق».</li>
+<li>لا تُستخدم الصورة والأرشيف معًا في منشور واحد.</li>
+</ul>
+
+<h3>٥٫٣ ما لا يُكتب في المنشور</h3>
+<ul>
+<li>لا <span class="mono">DOI</span> قبل النشر، ولا وصف بـ<span class="mono">peer-reviewed</span> أو <span class="mono">accepted</span> أو <span class="mono">indexed</span>.</li>
+<li>لا <span class="mono">quantum advantage</span> ولا <span class="mono">speed-up</span>، ولا أسبقية على النتائج الكلاسيكية المسمّاة في جدول الأعمال السابقة.</li>
+<li>لا تقل إن حدّ التكميم «حاد»؛ النص يقول صراحةً إن الثابت غير مدّعى الحدّية.</li>
+</ul>
+
+<h2>٦. منصات لا تحتاج فعلًا منك</h2>
+<table>
+<thead><tr><th style="width:24%">المنصة</th><th>الوضع</th></tr></thead>
+<tbody>
+<tr><td>Google Scholar</td><td>يفهرس زينودو تلقائيًا بعد أسابيع. لا ترفع شيئًا بنفسك، ولا تُنشئ ملفًا بحثيًا مكرّرًا.</td></tr>
+<tr><td>Semantic Scholar / OpenAlex</td><td>يسحبان من Crossref/DataCite عبر الـDOI تلقائيًا.</td></tr>
+<tr><td>ResearchGate</td><td>اختياري: أضف العمل برابط الـDOI وأرفق <span class="mono">OTAZ_III_Gibbs_Ledger_EN.pdf</span>؛ لا ترفع الأرشيف ولا تُعِد رفع الملف نفسه مرتين.</td></tr>
+<tr><td>arXiv</td><td>اختياري ومشروط: يحتاج تأييدًا (<span class="mono">endorsement</span>) في <span class="mono">cs.LG</span> أو <span class="mono">cs.IT</span>، وقد تُرفض الإحالة بسبب التصنيف. إن رفعت هناك، ضع الـDOI في حقل <span class="mono">Journal reference</span> ولا تكرّر النشر نفسه بصيغة مختلفة.</td></tr>
+<tr><td>X / Threads</td><td>اختياري: الصورة نفسها وسطر واحد، مع الرابط. لا تُنشئ سلسلة من عشرة منشورات لورقة واحدة.</td></tr>
+</tbody></table>
+
+<h2>٧. قائمة التحقق النهائية (اطبعها وأشر عليها)</h2>
+<div class="box">
+<ul class="chk">
+<li>كل الأوامر مرّت: ٥٢/٥٢ اختبارًا، ٥٦/٥٦ فحصًا، ٧٢/٧٢ بصمة.</li>
+<li><span class="mono">OTAZ_III.zip</span> أُعيد بناؤه بعد آخر تعديل، وعدد مُدخلاته ٩٢.</li>
+<li>المستودع عام، والوصف والوسوم مضبوطة، وسير العمل أخضر.</li>
+<li>الإصدار <span class="mono">v3.0.0</span> منشور ومعه أربعة أصول.</li>
+<li>سجل زينودو: <span class="mono">Preprint</span>، CC BY-NC 4.0، English، 3.0.0، ستة ملفات.</li>
+<li>الـ<span class="mono">DOI</span> مدخل في <span class="mono">CITATION.cff</span> و<span class="mono">README.md</span> و<span class="mono">.bib</span> وملف بيانات زينودو، ومُنشور.</li>
+<li>الرابط في حقل <span class="mono">Website</span> على GitHub وفيس وصف الإصدار.</li>
+<li>ORCID: العمل مضاف، <span class="mono">Preprint</span>، عام.</li>
+<li>لينكدإن: الصورة مرفقة، الرابط مستبدل، نص بديل مكتوب، لا ادعاء تحكيم.</li>
+<li>لا يوجد في أي ملف رقم <span class="mono">DOI</span> أو <span class="mono">ORCID</span> أو رابط مستودع مختلَق.</li>
+</ul>
+</div>
+
+<h2>٨. إذا احتجت التعديل بعد النشر</h2>
+<p>أي تعديل — تصحيح خطأ، إضافة نتيجة، تحديث رابط — يمرّ بالتسلسل نفسه: عدّل ← شغّل السلسلة في ٣٫٤ ← ارفع نسخة جديدة على زينودو (<span class="mono">New version</span>) ← حرّر وصف الإصدار على GitHub. لا تحذف سجلًا منشورًا ولا تُعِد استخدام رقم نسخة سابقة؛ سجلات زينودو دائمة، وهذا في صالحك: النسخة التي استُشهد بها تبقى موجودة، والتصحيح يظهر كنسخة لاحقة.</p>
+
+<div class="foot">هذا الدليل جزء من الوديعة: <span class="mono">docs/OTAZ_III_Publishing_Guide_AR.pdf</span> ومصدره <span class="mono">.html</span>.<br>
+النص والنتائج برخصة <span class="mono">CC BY-NC 4.0</span> والشيفرة برخصة <span class="mono">PolyForm Noncommercial 1.0.0</span> · للتصحيح: <span class="mono">mohtazaldawdeh@gmail.com</span></div>
+
+</body></html>

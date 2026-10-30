@@ -1,0 +1,286 @@
+{
+  "checks": [
+    {
+      "check": "all result files present",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "check": "E1 inverse reproduces q at beta=0.5",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E1 inverse reproduces q at beta=2.0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E1 recorded max error below 1e-12",
+      "ok": true,
+      "detail": "2.220446049250313e-16"
+    },
+    {
+      "check": "E2 dV/dbeta identity",
+      "ok": true,
+      "detail": "2.9808200352476888e-09"
+    },
+    {
+      "check": "E2 dW/dbeta identity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E2 heat capacity identity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E2 self-scored derivative non-negative",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E3 identity residual",
+      "ok": true,
+      "detail": "2.220446049250313e-15"
+    },
+    {
+      "check": "E3 bound respected",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E3 sharp case attains the bound",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E3 hand example entropy",
+      "ok": true,
+      "detail": "1.0397207708399179"
+    },
+    {
+      "check": "E4 chain residual",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E4 entropy identity",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E5 commuting bound respected",
+      "ok": true,
+      "detail": "0.0"
+    },
+    {
+      "check": "E5 coherent states separate despite equal diagonals",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E5 counterexample has identical diagonals",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E5 counterexample distance is one",
+      "ok": true,
+      "detail": "1.0"
+    },
+    {
+      "check": "E5 counterexample recomputed independently",
+      "ok": true,
+      "detail": "1.0"
+    },
+    {
+      "check": "E6 no floor violations",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E6 floor weakly increases with beta",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E7 no certificate violations",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E7 bootstrap coverage plausible",
+      "ok": true,
+      "detail": "(0.8916666666666667, 0.9833333333333333)"
+    },
+    {
+      "check": "E7 error decreases with shots at beta=1.0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E7 tenfold shots reduces error at beta=1.0",
+      "ok": true,
+      "detail": "0.3106097314251263"
+    },
+    {
+      "check": "E7 error decreases with shots at beta=3.0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E7 tenfold shots reduces error at beta=3.0",
+      "ok": true,
+      "detail": "0.36001154246215683"
+    },
+    {
+      "check": "E8 von Neumann equals Shannon",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E8 independent entropy check",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E9 no non-amplification violations",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E9 bound not vacuous",
+      "ok": true,
+      "detail": "-0.019682958355839424"
+    },
+    {
+      "check": "E10 all trials inside the certificate",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E10 median slack below one",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E11 contractivity holds",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E11 coherence contributes distance",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E12 reachable set is the convex hull",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E12 minimax bound equals half the range",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E12 equal-weight merge is never better than minimax",
+      "ok": true,
+      "detail": "1.0"
+    },
+    {
+      "check": "E12 same summary different dataset",
+      "ok": true,
+      "detail": "1.5452221782703508"
+    },
+    {
+      "check": "E12 example recomputed independently",
+      "ok": true,
+      "detail": "(3.3333333333333335, 4.878555511603684)"
+    },
+    {
+      "check": "E12 midpoint minimax on a fresh instance",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E13 commutative",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E13 associative against the n-ary form",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E13 not homogeneous",
+      "ok": true,
+      "detail": "2.193175735890015"
+    },
+    {
+      "check": "E13 duplication offset ln2/beta at beta=0.5",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E13 duplication offset ln2/beta at beta=1.0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E13 duplication offset ln2/beta at beta=3.0",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E15 quantisation bound holds",
+      "ok": true,
+      "detail": "0"
+    },
+    {
+      "check": "E15 measured error below bound at delta=0.01",
+      "ok": true,
+      "detail": "0.4941327562188767"
+    },
+    {
+      "check": "E15 measured error below bound at delta=0.05",
+      "ok": true,
+      "detail": "0.47462007491854824"
+    },
+    {
+      "check": "E15 measured error below bound at delta=0.1",
+      "ok": true,
+      "detail": "0.4343897587771831"
+    },
+    {
+      "check": "E15 measured error below bound at delta=0.25",
+      "ok": true,
+      "detail": "0.3799765372190272"
+    },
+    {
+      "check": "E15 mass summation keeps relative error",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "E16 tree merge equals n-ary merge",
+      "ok": true,
+      "detail": "3.701334132510862e-16"
+    },
+    {
+      "check": "source hashes match the files on disk",
+      "ok": true,
+      "detail": "[]"
+    },
+    {
+      "check": "eight vector figures present",
+      "ok": true,
+      "detail": "['fig1_reachable.svg', 'fig2_quantisation.svg', 'fig3_temperature.svg', 'fig4_gap_bound.svg', 'fig5_sampling.svg', 'fig6_coverage.svg', 'fig7_trace_distance.svg', 'fig8_helstrom.svg']"
+    }
+  ],
+  "passed": 56,
+  "total": 56
+}

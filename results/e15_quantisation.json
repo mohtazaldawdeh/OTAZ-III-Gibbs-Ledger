@@ -1,0 +1,58 @@
+[
+  {
+    "bound_holds": true,
+    "note": "the bound is a worst case over admissible roundings and is not attained by the adversarial construction used here",
+    "property": "relative_precision_delta_bounds_the_merge_error_by_D_delta_over_one_minus_delta",
+    "rows": [
+      {
+        "delta": 0.01,
+        "max_ratio_error_over_bound": 0.4941327562188767,
+        "mean_bound": 0.021405636191764946,
+        "mean_error": 0.004810997970196293,
+        "median_ratio": 0.20633107429888237,
+        "trials": 150
+      },
+      {
+        "delta": 0.05,
+        "max_ratio_error_over_bound": 0.47462007491854824,
+        "mean_bound": 0.11208812294486345,
+        "mean_error": 0.020615815332131807,
+        "median_ratio": 0.172178683940689,
+        "trials": 150
+      },
+      {
+        "delta": 0.1,
+        "max_ratio_error_over_bound": 0.4343897587771831,
+        "mean_bound": 0.24955731398727835,
+        "mean_error": 0.04434496492854953,
+        "median_ratio": 0.1740884371463457,
+        "trials": 150
+      },
+      {
+        "delta": 0.25,
+        "max_ratio_error_over_bound": 0.3799765372190272,
+        "mean_bound": 0.7447976762230644,
+        "mean_error": 0.11242907577562113,
+        "median_ratio": 0.13697352249563483,
+        "trials": 150
+      }
+    ],
+    "summation_chain": [
+      {
+        "delta": 0.01,
+        "relative_error": 0.0011111111111112848,
+        "rounded_total": 35.959999999999994,
+        "true_total": 36.0,
+        "within_delta": true
+      },
+      {
+        "delta": 0.1,
+        "relative_error": 0.011111111111110874,
+        "rounded_total": 35.60000000000001,
+        "true_total": 36.0,
+        "within_delta": true
+      }
+    ],
+    "violations": 0
+  }
+]

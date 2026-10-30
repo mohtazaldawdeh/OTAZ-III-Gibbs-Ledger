@@ -1,0 +1,12 @@
+[
+  {
+    "contractivity_holds": true,
+    "mean_coherence_excess": 0.31378851828875154,
+    "mean_diagonal_component": 0.24798298275415617,
+    "mean_full_trace_distance": 0.5617715010429077,
+    "min_slack": 0.008945780211413346,
+    "property": "dephasing_contracts_trace_distance_so_the_diagonal_gives_a_lower_bound",
+    "trials": 300,
+    "violations": 0
+  }
+]

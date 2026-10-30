@@ -1,0 +1,15 @@
+[
+  {
+    "cases": 400,
+    "floor_is_attained_scale": "TV <= tanh(beta*range/4) => P_e >= (1 - tanh(beta*range/4))/2",
+    "mean_slack_by_beta": {
+      "0.5": 0.040457836629216024,
+      "1.0": 0.07618943029272346,
+      "3.0": 0.1951877323675882,
+      "8.0": 0.2349705733862374
+    },
+    "min_slack": 1.205360793332666e-05,
+    "property": "helstrom_error_of_score_perturbations_respects_tanh_floor",
+    "violations": 0
+  }
+]

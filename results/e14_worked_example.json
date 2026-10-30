@@ -1,0 +1,115 @@
+[
+  {
+    "analytic_sensitivity_at_beta_1": -0.108319,
+    "finite_difference_at_beta_1": -0.10831935654742608,
+    "finite_difference_gap": 3.565474260835977e-07,
+    "names": [
+      "model_A",
+      "model_B",
+      "model_C",
+      "heuristic_1",
+      "heuristic_2"
+    ],
+    "property": "worked_example_and_finite_difference_check",
+    "rows": [
+      {
+        "beta": 0.25,
+        "effective_records": 4.987402,
+        "fused_value": 10.647272,
+        "score": 7.031897,
+        "sensitivity": -0.127846,
+        "weights": [
+          0.216975,
+          0.213744,
+          0.200794,
+          0.188158,
+          0.180329
+        ]
+      },
+      {
+        "beta": 0.5,
+        "effective_records": 4.950495,
+        "fused_value": 10.616101,
+        "score": 3.823045,
+        "sensitivity": -0.121486,
+        "weights": [
+          0.234213,
+          0.227291,
+          0.200584,
+          0.176132,
+          0.161779
+        ]
+      },
+      {
+        "beta": 1.0,
+        "effective_records": 4.812266,
+        "fused_value": 10.558636,
+        "score": 2.233146,
+        "sensitivity": -0.108319,
+        "weights": [
+          0.268973,
+          0.253309,
+          0.197277,
+          0.152111,
+          0.128331
+        ]
+      },
+      {
+        "beta": 2.0,
+        "effective_records": 4.363921,
+        "fused_value": 10.463334,
+        "score": 1.464672,
+        "sensitivity": -0.082718,
+        "weights": [
+          0.336437,
+          0.298393,
+          0.180985,
+          0.107599,
+          0.076586
+        ]
+      },
+      {
+        "beta": 4.0,
+        "effective_records": 3.390454,
+        "fused_value": 10.339374,
+        "score": 1.120513,
+        "sensitivity": -0.044559,
+        "weights": [
+          0.448407,
+          0.35273,
+          0.129762,
+          0.045865,
+          0.023236
+        ]
+      },
+      {
+        "beta": 8.0,
+        "effective_records": 2.389413,
+        "fused_value": 10.241351,
+        "score": 0.987476,
+        "sensitivity": -0.01059,
+        "weights": [
+          0.582861,
+          0.360665,
+          0.048811,
+          0.006098,
+          0.001565
+        ]
+      }
+    ],
+    "scores": [
+      0.92,
+      0.86,
+      0.61,
+      0.35,
+      0.18
+    ],
+    "values": [
+      10.4,
+      9.8,
+      11.7,
+      8.9,
+      12.6
+    ]
+  }
+]

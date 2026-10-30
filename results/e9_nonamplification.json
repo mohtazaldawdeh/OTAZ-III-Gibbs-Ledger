@@ -1,0 +1,9 @@
+[
+  {
+    "bound_formula": "TV <= eps/(1-eps) with eps = ||p_hat - p||_1",
+    "max_excess_over_bound": -0.019682958355839424,
+    "property": "logit_parametrisation_does_not_amplify_estimation_error",
+    "trials": 600,
+    "violations": 0
+  }
+]

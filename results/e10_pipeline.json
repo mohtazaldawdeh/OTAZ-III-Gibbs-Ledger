@@ -1,0 +1,14 @@
+[
+  {
+    "all_inside_certificate": true,
+    "bound_formula": "D * min(1, tau_hat + eps/(1-eps)) with eps = ||p_hat - p||_1",
+    "max_ratio_error_over_bound": 0.30794458934307156,
+    "mean_bound": 1.5838028542918303,
+    "mean_error": 0.1003370485251089,
+    "median_ratio_error_over_bound": 0.055599705032578904,
+    "p95_error": 0.2536044710239222,
+    "property": "composed_certificate_for_sampling_plus_truncation",
+    "trials": 300,
+    "violations": 0
+  }
+]

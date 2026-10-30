@@ -1,0 +1,25 @@
+[
+  {
+    "effective_number_checks": [
+      {
+        "beta": 0.25,
+        "between_1_and_n": true,
+        "n_eff": 3.893236664454661
+      },
+      {
+        "beta": 1.0,
+        "between_1_and_n": true,
+        "n_eff": 2.8562171116518997
+      },
+      {
+        "beta": 4.0,
+        "between_1_and_n": true,
+        "n_eff": 1.1900103998987823
+      }
+    ],
+    "max_abs_difference": 4.440892098500626e-16,
+    "property": "von_neumann_equals_shannon_for_diagonal_states",
+    "trials": 200,
+    "verified_le_1e-12": true
+  }
+]

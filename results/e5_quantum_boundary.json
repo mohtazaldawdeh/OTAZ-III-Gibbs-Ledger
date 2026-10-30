@@ -1,0 +1,25 @@
+[
+  {
+    "affinity_lower_bound_respected": true,
+    "bell_example": {
+      "diagonal": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "diagonal_only_prediction": 0.0,
+      "diagonals_identical": true,
+      "trace_distance": 1.0
+    },
+    "coherent_max_trace_distance": 0.9980673607749426,
+    "coherent_mean_trace_distance": 0.7490142506614336,
+    "coherent_states_with_nonzero_distance": 200,
+    "coherent_trials": 200,
+    "commuting_bound_respected": true,
+    "commuting_trials": 300,
+    "max_bound_violation_commuting": 0.0,
+    "min_TV_squared_minus_one_minus_affinity_squared": 8.572711044815525e-05,
+    "property": "diagonal_certificate_is_sharp_only_for_commuting_scores"
+  }
+]

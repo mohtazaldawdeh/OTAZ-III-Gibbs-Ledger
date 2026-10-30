@@ -1,0 +1,71 @@
+[
+  {
+    "commutative": true,
+    "commutativity_max_defect": 5.551115123125783e-16,
+    "equal_weight_chaining": [
+      {
+        "difference": 0.0,
+        "n": 2
+      },
+      {
+        "difference": 5.551115123125783e-17,
+        "n": 4
+      },
+      {
+        "difference": 0.0,
+        "n": 8
+      }
+    ],
+    "homogeneity_defect": 2.193175735890015,
+    "homogeneous": false,
+    "idempotence": [
+      {
+        "beta": 0.5,
+        "defect": 0.0,
+        "predicted_score_change": 1.3862943611198906,
+        "score_change": 1.3862943611198906,
+        "value_change": 0.0
+      },
+      {
+        "beta": 1.0,
+        "defect": 0.0,
+        "predicted_score_change": 0.6931471805599453,
+        "score_change": 0.6931471805599453,
+        "value_change": 0.0
+      },
+      {
+        "beta": 3.0,
+        "defect": -2.7755575615628914e-17,
+        "predicted_score_change": 0.23104906018664842,
+        "score_change": 0.2310490601866484,
+        "value_change": 0.0
+      }
+    ],
+    "property": "algebra_of_the_single_source_formula",
+    "score_slot_associative": true,
+    "score_slot_associative_max_gap_to_nary": 6.661338147750939e-16,
+    "score_slot_associative_under_both_orders": true,
+    "value_slot_associative": true,
+    "value_slot_max_gap_to_nary": 8.881784197001252e-16,
+    "worst_associativity_example": {
+      "beta": 1.0,
+      "difference": 8.881784197001252e-16,
+      "left_fold_value": -2.3160302692133055,
+      "nary_value": -2.3160302692133046,
+      "records": [
+        [
+          0.5645364939915783,
+          -0.6767450772131001
+        ],
+        [
+          -3.1910843700714966,
+          1.383136569412179
+        ],
+        [
+          1.9191448168610725,
+          -0.7378159473073487
+        ]
+      ]
+    }
+  }
+]

@@ -1,0 +1,70 @@
+/* Two-column IEEE-flavoured layout, black and white, produced with WeasyPrint.
+   This is not the IEEE template (which is LaTeX/Word based); it is a faithful
+   typographic approximation of the IEEE conference style so that the same
+   content can be reviewed in the expected shape before submission. */
+
+@page {
+  size: A4;
+  margin: 18mm 15mm 16mm 15mm;
+  @bottom-center { content: counter(page); font-family: "DejaVu Serif", serif; font-size: 8pt; }
+}
+
+html { font-family: "DejaVu Serif", serif; font-size: 8.6pt; line-height: 1.28; color: #000; }
+body { margin: 0; }
+
+sup { font-size: 0.70em; vertical-align: 0.42em; line-height: 0; }
+sub { font-size: 0.70em; vertical-align: -0.24em; line-height: 0; }
+
+h1.title { font-size: 16pt; line-height: 1.16; text-align: center; margin: 0 0 3mm 0; font-weight: normal; }
+p.authors { text-align: center; font-size: 10.5pt; margin: 0 0 1.2mm 0; }
+p.affil { text-align: center; font-size: 8pt; margin: 0 0 0.5mm 0; }
+p.notice { font-size: 7.6pt; text-align: center; margin: 3mm 0 4mm 0; padding: 1.6mm 2mm;
+           border-top: 0.6pt solid #000; border-bottom: 0.6pt solid #000; }
+
+div.abstract { font-size: 8.2pt; margin: 0 0 4mm 0; }
+div.abstract p { text-align: justify; margin: 0 0 1.4mm 0; }
+span.lbl { font-weight: bold; font-style: italic; }
+
+/* two columns start after the single-column abstract */
+div.columns { column-count: 2; column-gap: 6mm; column-fill: auto; }
+
+h2 { font-size: 8.6pt; font-weight: normal; font-variant: small-caps; letter-spacing: 0.02em;
+     text-align: center; margin: 3.4mm 0 1.2mm 0; page-break-after: avoid; }
+h3 { font-size: 8.4pt; font-style: italic; margin: 2.4mm 0 0.8mm 0; page-break-after: avoid; }
+p { margin: 0 0 1.1mm 0; text-align: justify; hyphens: auto; text-indent: 1.8mm; }
+p.noind, h2 + p, h3 + p, div.thm p, div.abstract p, p.authors { text-indent: 0; }
+ul, ol { margin: 0 0 1.2mm 0; padding-left: 4.6mm; }
+li { margin: 0 0 0.7mm 0; text-align: justify; }
+
+div.eq { margin: 1.4mm 0; text-align: center; font-size: 8.4pt; page-break-inside: avoid;
+         position: relative; padding: 0 6mm; }
+div.eq span.num { position: absolute; right: 0; top: 0; font-size: 8pt; }
+
+div.thm { border-left: 1.6pt solid #000; padding: 0.6mm 0 0.4mm 2.2mm; margin: 1.8mm 0;
+          page-break-inside: avoid; }
+div.thm p { margin-bottom: 0.8mm; }
+div.thm span.t { font-weight: bold; font-style: normal; }
+div.thm div.body { font-style: italic; }
+div.note { border: 0.5pt solid #000; padding: 1.4mm 2mm; margin: 1.8mm 0; font-size: 7.9pt;
+           page-break-inside: avoid; }
+
+div.tblwrap { page-break-inside: avoid; break-inside: avoid; margin: 2mm 0 3mm 0; }
+div.tblwrap caption { caption-side: top; text-align: left; font-size: 8.2pt; margin-bottom: 1.2mm; }
+table { border-collapse: collapse; width: 100%; font-size: 6.9pt; margin: 1.4mm 0 2mm 0;
+        page-break-inside: avoid; }
+table caption { caption-side: top; text-align: left; font-size: 7.2pt; margin-bottom: 0.9mm; }
+th, td { border-top: 0.4pt solid #000; border-bottom: 0.4pt solid #000; padding: 0.7mm 0.9mm;
+         vertical-align: top; text-align: left; }
+thead th { border-bottom: 0.8pt solid #000; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+
+figure { margin: 1.8mm 0; text-align: center; page-break-inside: avoid; }
+figure img { width: 100%; }
+figcaption { font-size: 7.2pt; text-align: justify; margin-top: 0.9mm; }
+
+pre, code { font-family: "DejaVu Sans Mono", monospace; font-size: 6.6pt; }
+pre { border: 0.4pt solid #000; padding: 1.2mm; white-space: pre-wrap; page-break-inside: avoid; }
+
+div.refs p { font-size: 7.2pt; margin: 0 0 0.8mm 0; padding-left: 5mm; text-indent: -5mm;
+             text-align: left; }
+div.toc p { font-size: 7.6pt; margin: 0 0 0.5mm 0; }

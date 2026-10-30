@@ -1,0 +1,38 @@
+OTAZ III - The Gibbs Ledger
+Master archive of the deposit.
+
+Title: OTAZ III: The Gibbs Ledger - Exact Aggregation, a Sharp Impossibility Theorem,
+       and Certified Error Budgets for Scored-Record Fusion
+Author: Al-Mu'taz Billah Salah Al-Dawoodiya
+Version 3.0.0, 2026-10-28. Preprint; not peer reviewed.
+
+Manifest digest: 69621d19233b79b0
+Files in this archive: 94
+
+By kind:
+            .bib: 1
+            .cff: 1
+            .css: 2
+           .html: 4
+           .json: 21
+             .md: 10
+            .pdf: 4
+            .png: 11
+             .py: 22
+            .svg: 11
+            .txt: 5
+    no extension: 2
+
+Start here:
+  publication/OTAZ_III_Gibbs_Ledger_EN.pdf            manuscript, 34 pp
+  publication/OTAZ_III_Gibbs_Ledger_EN_IEEE_layout.pdf manuscript, two column, 20 pp
+  publication/OTAZ_III_Novelty_Assessment_AR.pdf      one-page Arabic novelty assessment
+  publication/OTAZ_III_Social_Card.png                black-and-white card for the post
+  publication/OTAZ_III_LinkedIn_Post.md               the English post text
+  README.md                                           orientation and how to run
+
+Reproduce: python experiments/otaz_run_quantum.py, then otaz_make_figures.py,
+python -m unittest discover -s tests, python scripts/otaz_verify_quantum.py.
+
+Licences: text and results CC BY-NC 4.0; code PolyForm Noncommercial 1.0.0.
+No DOI, ORCID iD or repository URL is asserted inside this archive.

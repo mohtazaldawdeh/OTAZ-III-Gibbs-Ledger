@@ -1,0 +1,50 @@
+{
+  "title": "OTAZ III: The Gibbs Ledger - Exact Aggregation, a Sharp Impossibility Theorem, and Certified Error Budgets for Scored-Record Fusion",
+  "upload_type": "publication",
+  "publication_type": "preprint",
+  "publication_date": "2026-10-28",
+  "language": "eng",
+  "version": "3.0.0",
+  "access_right": "open",
+  "license": "cc-by-nc-4.0",
+  "creators": [
+    {
+      "name": "Al-Dawoodiya, Al-Mu'taz Billah Salah",
+      "affiliation": "Independent researcher",
+      "orcid": "TO-BE-ADDED-BY-AUTHOR"
+    }
+  ],
+  "description": "<p>A standalone mathematical study of one operator: a temperature-scaled softmax over scores normalising a weighted mean of values, carried alongside the scaled log-partition sum. The pair is treated as an accounting object, and three questions are answered with proofs rather than approximations.</p><p>Algebra: the records form a commutative monoid, so aggregation is associative and exactly mergeable in any tree; it is not idempotent (a duplicated record adds beta^-1 ln 2 to the score) and not homogeneous (defect 2.1932 at lambda = 2), so the operation is not the first slot of a bilinear form.</p><p>Distributed accounting, the central contribution: if each shard reports only its value, the set of global values compatible with the reports is the convex hull of the reported values, and no merge rule can beat half the range in the worst case; the minimax rule is the midpoint, half the range is attained, and equal weighting is never better. If the masses are carried but quantised to relative precision delta, the merged value is accurate to D delta / (1 - delta) for any number of shards. Both bounds are proved and measured.</p><p>Positive results: a temperature calculus (dV/dbeta = Cov(v,w), d2 lnZ/dbeta2 = Var(w), d3 lnZ/dbeta3 = third cumulant); a coarse-graining identity gap = beta^-1 H(block masses), sharp, bounded by beta^-1 ln k, obeying a Shannon chain rule; an L1 non-amplification bound for the logit parametrisation; and a composition of sampling and truncation budgets into one certified interval. The quantum reading is one-directional: dephasing contracts the trace distance so the classical computation is a lower bound, a Helstrom floor follows, and two orthogonal states with identical diagonals show that no converse exists.</p><p>Sixteen seeded experiments (master seed 2026110101) write nineteen JSON result files; 52 unit tests and a 56-check independent verifier, which does not import the library, regenerate every reported number. Negative results are reported in the main text: a bootstrap interval that under-covers (0.892 and 0.900 against a nominal 0.95), a certificate that saturates at high beta with few shots, and a quantisation bound that is proved but not attained. A one-page Arabic novelty assessment accompanies the deposit and lists, statement by statement, what is classical, what is a repackaging, what is offered as new, and what would falsify it. No priority, peer-review or quantum-advantage claim is made, and no DOI or ORCID is invented.</p>",
+  "keywords": [
+    "Gibbs distribution",
+    "softmax",
+    "log-sum-exp",
+    "mergeable summaries",
+    "impossibility theorem",
+    "minimax lower bound",
+    "quantisation error",
+    "coarse graining",
+    "certified error bounds",
+    "trace distance",
+    "dephasing",
+    "Helstrom bound",
+    "reproducible research",
+    "OTAZ"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "10.5281/zenodo.23648070",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-preprint",
+      "scheme": "doi"
+    }
+  ],
+  "notes": "Preprint. Not peer reviewed. No quantum computational advantage is claimed. The DOI for this record is a placeholder until the deposit is reserved. The Arabic novelty assessment (OTAZ_III_Novelty_Assessment_AR.pdf) is part of the deposit and is meant to be read with Section IX of the manuscript.",
+  "files_and_license_mapping": {
+    "OTAZ_III_Gibbs_Ledger_EN.pdf": "cc-by-nc-4.0",
+    "OTAZ_III_Gibbs_Ledger_EN_IEEE_layout.pdf": "cc-by-nc-4.0",
+    "OTAZ_III_Novelty_Assessment_AR.pdf": "cc-by-nc-4.0",
+    "OTAZ_III_Cover.png": "cc-by-nc-4.0",
+    "OTAZ_III_Research_Package.zip": "polyform-noncommercial-1.0.0 (code) / cc-by-nc-4.0 (text and results)"
+  }
+}

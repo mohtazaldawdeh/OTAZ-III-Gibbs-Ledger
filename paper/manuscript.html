@@ -1,0 +1,2114 @@
+<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><title>OTAZ III - Gibbs weights as a ledger</title></head><body>
+<h1 class="title">OTAZ III: The Gibbs Ledger &mdash; Exact Aggregation, a Sharp
+Impossibility Theorem, and Certified Error Budgets for Scored-Record Fusion</h1>
+<p class="authors">Al-Mu'taz Billah Salah Al-Dawoodiya</p>
+<p class="affil">Independent researcher &middot; Software developer, artificial intelligence and
+computer science &middot; Amman, Jordan</p>
+<p class="affil">Contact: mohtazaldawdeh@gmail.com</p>
+<p class="affil">Preprint, prepared for deposit on Zenodo. Version 3.0.0, 28 October 2026.</p>
+<p class="affil">Companion deposit: OTAZ &mdash; Exponentially Weighted Fusion,
+<i>Algebraic Structure, Numerical Stability, and Reproducible Experiments</i>,
+DOI 10.5281/zenodo.23648070.</p>
+<p class="notice"><b>Status.</b> This document is a preprint. It has not been peer
+reviewed, it has not been submitted to a journal, and no claim of acceptance or
+review is made anywhere in it. A one-page novelty assessment accompanies the
+deposit and states, item by item, what is classical, what is a repackaging, and
+what is offered as new and checkable. All code, data and figures needed to
+re-derive every number in the text are included in the accompanying repository
+under the PolyForm Noncommercial 1.0.0 licence; the text is under CC BY-NC 4.0.</p>
+
+<div class="abstract">
+<p><span class="lbl">Abstract.</span> A scored record is a pair: a value and a
+score. Fusing a collection of such records into one pair &mdash; a Gibbs-weighted
+mean of the values together with a scaled log-sum-exp of the scores &mdash; is one
+of the oldest operations in statistics and one of the most frequently re-derived
+in engineering. This paper treats the pair as an accounting object and asks three
+questions that the usual treatments leave implicit: what algebra the operation
+has, what a distributed implementation must carry between shards, and what
+guarantees survive when the inputs are estimated rather than known.</p>
+<p>The algebra is settled first. The records form a commutative monoid whose
+operation is associative but <i>not</i> idempotent &mdash; duplicating a record
+adds exactly &beta;<sup>&minus;1</sup>ln&nbsp;2 to the score &mdash; and which is
+not homogeneous in the values, so the operation is not the first slot of a
+bilinear form. The binary rule generates the <i>n</i>-ary one, so aggregation is
+order-independent, and the pair (mass, mass-weighted sum) is a sufficient
+statistic, which makes tree-structured merging exact.</p>
+<p>The distributed question is then answered negatively, and this is the central
+contribution. If each shard reports only its value &mdash; however many records it
+contains &mdash; the set of global values compatible with the reports is the whole
+convex hull of the shard values, and no merge rule can do better, in the worst
+case, than half the range of those values. The bound is sharp, the minimax rule is
+the midpoint, and equal weighting is never better. Two datasets with identical
+per-shard values and identical record counts can differ in their global value by
+an amount proportional to the mass ratio the summary discarded; a worked example
+gives a gap of 1.545 on a range of 10. If the masses are carried but rounded to
+relative precision &delta;, the merged value is accurate to
+<i>D</i>&delta;/(1&minus;&delta;) whatever the number of shards; both bounds are proved and
+measured.</p>
+<p>On the positive side I prove that block-wise evaluation of a pipeline loses
+exactly &beta;<sup>&minus;1</sup> times the entropy of the block-mass
+distribution, bounded by &beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i> and attained by
+equal masses; that the loss obeys a Shannon chain rule across levels; that the
+logit parametrisation cannot amplify an <i>L</i><sub>1</sub> error of the weights;
+and that sampling and truncation budgets compose into one certified interval which
+held in all 300 random pipelines tried. A closing technical section fixes the
+boundary of the quantum reading: the weight vector is the diagonal of a density
+matrix, dephasing contracts the trace distance so the classical computation is a
+lower bound, a Helstrom floor follows, and two orthogonal states with identical
+diagonals show that no converse exists.</p>
+<p>Sixteen seeded experiments, 52 unit tests and a 56-check independent verifier
+support the text; the negative results, including a bootstrap that under-covers and
+a certificate that saturates at small sample sizes, are reported in the main text
+rather than in a footnote. The novelty assessment is deliberately conservative: the
+ingredients are classical and their sources are named, and the one result offered
+as new is the sharp impossibility statement for value-only summaries together with
+its quantisation refinement.</p>
+<p><span class="lbl">Index Terms.</span> Gibbs distribution, log-sum-exp, softmax,
+fusion, mergeable summaries, distributed aggregation, minimax lower bound,
+quantisation, entropy, certified error bounds, trace distance, dephasing,
+reproducible research.</p>
+</div>
+
+<h2>Contents</h2>
+<div class="toc">
+<p>I. Introduction &nbsp;&middot;&nbsp; II. Setting, notation and related work
+&nbsp;&middot;&nbsp; III. The algebra of scored-record fusion
+&nbsp;&middot;&nbsp; IV. The ledger is necessary: an impossibility theorem and
+its sharp constant &nbsp;&middot;&nbsp; V. Temperature as a control
+&nbsp;&middot;&nbsp; VI. Coarse-graining accounting &nbsp;&middot;&nbsp;
+VII. Certified error budgets for estimated weights &nbsp;&middot;&nbsp; VIII. The
+quantum interface &nbsp;&middot;&nbsp; IX. Prior art and a conservative novelty
+assessment &nbsp;&middot;&nbsp; X. Experiments and results &nbsp;&middot;&nbsp;
+XI. Engineering implications &nbsp;&middot;&nbsp; XII. Limitations
+&nbsp;&middot;&nbsp; XIII. Reproducibility &nbsp;&middot;&nbsp; XIV. Conclusion
+&nbsp;&middot;&nbsp; Appendix A: proofs &nbsp;&middot;&nbsp; Appendix B: stored
+scalars &nbsp;&middot;&nbsp; Appendix C: repository manifest &nbsp;&middot;&nbsp;
+References</p>
+</div>
+
+<h2>I. Introduction</h2>
+
+<h3>A. The object</h3>
+
+<p>Most systems that produce a quantity also produce a claim about how much that
+quantity should be trusted. A weather model emits a temperature and a verification
+score; a learned ranker emits a probability and a calibration measure; a sensor
+emits a reading and a signal-to-noise ratio; a Monte-Carlo estimator emits a sample
+and a log-weight. When such records must be combined, the combination has to
+respect both halves of the pair, and the classical answer is a Gibbs average:
+exponentiate the scores, normalise, take the weighted mean of the values, and
+report the scaled logarithm of the partition sum as the aggregate's own score.</p>
+
+<div class="eq">
+m<sub>i</sub> = e<sup>&beta;w<sub>i</sub></sup>, &nbsp;&nbsp;
+p<sub>i</sub> = m<sub>i</sub>/Z, &nbsp;&nbsp; Z = &sum;<sub>i</sub> m<sub>i</sub>,
+&nbsp;&nbsp; V = &sum;<sub>i</sub> p<sub>i</sub>v<sub>i</sub>, &nbsp;&nbsp;
+W = &beta;<sup>&minus;1</sup>ln&nbsp;Z.
+<span class="num">(1)</span>
+</div>
+
+<p>I call <i>m<sub>i</sub></i> the mass of record <i>i</i>, <i>Z</i> the partition
+sum, <i>V</i> the fused value and <i>W</i> the fused score, and the triple
+(<i>Z</i>, <i>V</i>, <i>W</i>) the <i>ledger</i> of an aggregate. The word is
+deliberate. A ledger is not a summary of what happened; it is the set of numbers
+one must keep in order to answer later questions exactly, and the difference between
+those two things is the subject of Section IV.</p>
+
+<p>The operation appears under many names: exponential weighting, logarithmic
+pooling, log-mean-exp pooling, soft gating in a mixture of experts, Bayesian model
+averaging over a finite model set, likelihood-ratio combination, the recursive
+update of a particle filter, and the partition function of a Gibbs distribution with
+a fixed sufficient statistic. Each community has re-derived the two-line algebra
+above and each has, reasonably, stopped there, because the two lines are easy and
+the applications are pressing. The cost of stopping there is that the interesting
+questions are never asked. Three of them organise this paper.</p>
+
+<h3>B. Three questions</h3>
+
+<p><b>What algebra does the operation have?</b> Texts state that the fused score is
+a log-sum-exp and the fused value a weighted mean, and then move on. But the
+properties engineers rely on &mdash; may I merge in any order? may I merge two
+partial results without revisiting the inputs? what happens if a record arrives
+twice? &mdash; are algebraic properties, and they are not all visible in the
+formula. Duplication is not neutral: a record that arrives twice is not the same as
+a record that arrives once, because the partition sum counts it twice while the
+value does not move, and the size of the effect is exactly
+&beta;<sup>&minus;1</sup>ln&nbsp;2. Section III proves the algebra in full,
+including the parts that fail.</p>
+
+<p><b>What must a distributed implementation carry between shards?</b> This is the
+question with the sharpest answer, and I regard it as the contribution of the
+paper. The tempting interface is to send the value: each shard computes its own
+fused value and reports it. The correct interface is to send the mass as well.
+Section IV shows that the difference is not a matter of taste. With values alone,
+the set of global values still compatible with the reports is the entire convex hull
+of the reported values, so a merge rule can be wrong by half the range of those
+values no matter how clever it is; the midpoint is minimax and attains that bound
+exactly. Two datasets whose shards agree in value and in record count but differ in
+mass can produce global values differing by 1.5452 on a range of 10 &mdash;
+about a sixth of the range, from two datasets no value-only rule can tell apart. If the mass
+is carried but quantised, the loss is <i>D</i>&delta;/(1&minus;&delta;), and that is
+sharp too.</p>
+
+<p><b>What survives when the inputs are estimated?</b> Production inputs are never
+known: weights come from finitely many samples, some records are dropped for cost,
+and some aggregates are computed block by block. Each introduces an error, and a
+system that reports a number without an interval around it reports an illusion.
+Sections VI and VII supply the three statements that make an interval possible: the
+exact cost of coarse evaluation, an error non-amplification result for the logit
+parametrisation, and a composition theorem that turns sampling and truncation into
+one certified bound. Section VIII takes the last step and asks what the same
+construction means when the weights come from a quantum device; the answer is
+precise and one-directional.</p>
+
+<h3>C. What this paper does not claim</h3>
+
+<p>The mathematics is built from classical parts: the Gibbs variational principle,
+the entropy bound, the pinching inequality, the Helstrom formula, elementary minimax
+reasoning. Section IX lists the components against their sources in one table and
+states, for each, whether it is classical, repackaged or offered as new. Exactly one
+item is offered as new: the impossibility statement of Section IV with its sharp
+constant and its quantisation refinement, in the setting of a fusion operator that
+carries a score alongside a value. Even there, the <i>style</i> of argument is
+standard minimax theory and the framing owes an obvious debt to the
+mergeable-summaries literature; what I could not find is the statement itself for
+this operator. The one-page novelty assessment that accompanies the deposit repeats
+this in a form a reader can attack item by item.</p>
+
+<p>Two conventions. A result is not called new unless a proof is given and the
+nearest prior art is named. And no number appears in the text that is not produced
+by the accompanying code from a stated seed and stored in a named file; when the
+code and the prose disagree, the code wins and the prose is a bug.</p>
+
+<h3>D. Contributions</h3>
+<ol>
+<li><b>Algebra.</b> The records form a commutative monoid, associative and exactly
+mergeable, with an explicit two-number sufficient statistic; the operation is not
+idempotent (duplication adds &beta;<sup>&minus;1</sup>ln&nbsp;2 exactly) and not
+homogeneous, so it is not the first slot of a bilinear form (Theorems 1&ndash;2).</li>
+<li><b>Impossibility.</b> Value-only summaries leave the merged value undetermined
+on the full convex hull of the shard values (Theorem 3); every merge rule has
+worst-case error at least half the range, and the midpoint attains it (Theorem 4); a
+ledger rounded to relative precision &delta; merges to within
+<i>D</i>&delta;/(1&minus;&delta;), independently of the number of shards, with the
+constant not claimed sharp (Theorem 5).</li>
+<li><b>Accounting.</b> Block-wise evaluation loses exactly
+&beta;<sup>&minus;1</sup>&times;the entropy of the block masses, bounded by
+&beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i>, attained by equal masses, and obeying a
+Shannon chain rule across levels (Theorems 7&ndash;8).</li>
+<li><b>Certificates.</b> The logit parametrisation cannot amplify an
+<i>L</i><sub>1</sub> error (Theorem 9), and sampling plus truncation compose into a
+single certified interval (Theorem 10).</li>
+<li><b>Quantum boundary.</b> The theory is the commuting special case; dephasing
+contracts the trace distance so the classical computation is a lower bound
+(Theorem 11), a Helstrom floor follows (Corollary 1), and two orthogonal states with
+identical diagonals rule out a converse (Theorem 12).</li>
+<li><b>Reproducibility.</b> Sixteen seeded experiments, 52 unit tests, a 56-check
+verifier that does not import the library it checks, a checksum manifest and stored
+results (Section XIII).</li>
+</ol>
+
+<h2>II. Setting, notation and related work</h2>
+
+<h3>A. Notation</h3>
+
+<p>A record is a pair (<i>v</i>, <i>w</i>) with value
+<i>v</i> &isin; R<sup><i>d</i></sup> and score <i>w</i> &isin; R. The parameter
+&beta; is a finite non-zero real; by convention &beta; &gt; 0 sharpens the weights
+toward high scores and &beta; &lt; 0 toward low ones, and several statements below
+fix a sign because an inequality reverses when &beta;<sup>&minus;1</sup> changes
+sign. <i>D</i> is the diameter of the values under the norm in use. Total variation
+is TV(<i>p</i>, <i>q</i>) = &frac12;&Vert;<i>p</i>&minus;<i>q</i>&Vert;<sub>1</sub>.
+Trace distance is &frac12;&Vert;&rho;&minus;&sigma;&Vert;<sub>1</sub>; the two agree
+for diagonal states.</p>
+
+<h3>B. Numerical realisation</h3>
+
+<p>Equation (1) must not be evaluated as printed. The exponentials overflow in
+double precision for &beta;<i>w</i> beyond roughly 709 and underflow below roughly
+&minus;745, and both failures are silent: the sum becomes zero or infinite and the
+subsequent division produces a not-a-number that propagates without a warning in
+most array libraries. The remedy is the max-shifted form
+&beta;<sup>&minus;1</sup>(<i>c</i> + ln&sum;<sub><i>i</i></sub>e<sup>&beta;<i>w<sub>i</sub></i>&minus;<i>c</i></sup>)
+with <i>c</i> = max<sub><i>i</i></sub>&beta;<i>w<sub>i</sub></i>, which leaves the
+weights unchanged and shifts the score by the known amount
+&beta;<sup>&minus;1</sup><i>c</i>. The shifted form is what the accompanying library
+implements, and the test suite includes scores of order 800 so that a regression to
+the naive form fails loudly. The error analysis of this primitive, including bounds
+on the relative error of the result, is due to Blanchard, Higham and Higham [8]; the
+one-pass streaming version to Milakov and Gimelshein [9].</p>
+
+<p>The natural object for a distributed implementation is not the pair but the
+triple (<i>Z</i>, <i>S</i>, <i>n</i>) with
+<i>S</i> = &sum;<sub><i>i</i></sub><i>m<sub>i</sub>v<sub>i</sub></i>, because
+<i>Z</i> and <i>S</i> are additive and the pair is recovered by division and
+logarithm. Section III shows that this is forced rather than convenient; Section IV
+shows what happens when an implementation drops <i>Z</i>.</p>
+
+<h3>C. Where the object appears</h3>
+
+<p><i>Forecast combination.</i> Combining predictive distributions under a
+logarithmic score reduces to a score-weighted average whose weights are softmax in
+the accumulated scores; the fifty-year review of Wang, Hyndman, Li and Kang [12]
+documents both the practice and the strength of the equal-weight baseline, which is
+why Section IV states its comparison against equal weighting specifically.</p>
+
+<p><i>Mixtures and products of experts.</i> Soft gating computes
+<i>g<sub>i</sub></i> = softmax(<i>s<sub>i</sub></i>) and returns
+&sum;<sub><i>i</i></sub><i>g<sub>i</sub>e<sub>i</sub></i>(<i>x</i>) [20], which is
+(1) with the gate logit in the role of the score. Product-of-experts models use the
+same log-sum-exp arithmetic in the log domain [21], which is the same function read as
+a smooth maximum [3].</p>
+
+<p><i>Sequential Monte Carlo.</i> Particle filters carry log-weights and combine
+them by exactly this recursion; the fused score is the estimated log-evidence [22].</p>
+
+<p><i>Distributed estimation.</i> When devices cannot share raw data they share
+summaries, and which summaries compose is the subject of the mergeable-summaries
+literature [16, 17]; linear sketches are trivially mergeable. Section III shows that
+the ledger is a linear sketch of the required kind, and Section IV shows that
+anything smaller is not.</p>
+
+<p><i>Quantum state estimation.</i> A weight vector is a diagonal density matrix,
+and what a classical summary of a quantum state can certify is the
+classical-versus-quantum question of Section VIII [4, 5, 6].</p>
+
+<h3>D. Related theory</h3>
+
+<p>Three bodies of work bound what this paper can claim. The
+<i>exponential-family</i> literature establishes that the natural sufficient
+statistic of a Gibbs family is additive and of fixed dimension [18], which is the
+content of Theorem 1(v) and of the merge procedure. The <i>mergeability</i>
+framework of Agarwal et al. [16], with the sketching literature [17] alongside,
+formalises when a summary can be merged while
+preserving an error and size guarantee, and proves both positive and negative
+results for concrete summaries. <i>Communication-constrained minimax theory</i>
+[19] gives lower bounds on estimation error as a function of a bit budget, via
+metric entropy. The result of Section IV sits between the last two: the constraint
+is not the number of bits but the <i>shape</i> of the summary, and because that shape
+is so restrictive the bound is exact rather than order-optimal, with an explicit
+attaining construction.</p>
+
+<h2>III. The algebra of scored-record fusion</h2>
+
+<h3>A. The two slots and what they are called</h3>
+
+<p>Write a record as (<i>v</i>, <i>w</i>) and define the fusion of two records by</p>
+
+<div class="eq">
+(v<sub>A</sub>, w<sub>A</sub>) &#8904;<sub>&beta;</sub> (v<sub>B</sub>, w<sub>B</sub>)
+= <span style="white-space:nowrap">(</span>
+(m<sub>A</sub>v<sub>A</sub> + m<sub>B</sub>v<sub>B</sub>)/(m<sub>A</sub> + m<sub>B</sub>)
+&nbsp;|&nbsp; &beta;<sup>&minus;1</sup>ln(m<sub>A</sub> + m<sub>B</sub>)
+<span style="white-space:nowrap">)</span>,
+<span class="num">(2)</span>
+</div>
+
+<p>with <i>m<sub>A</sub></i> = e<sup>&beta;<i>w<sub>A</sub></i></sup> and similarly
+for <i>B</i>. The left slot is a mass-weighted mean of values; the right slot is a
+scaled log-sum-exp of masses. Everything in this paper follows from two facts about
+these slots: the left slot is unchanged when the same constant is added to every
+score, and the right slot is additive in masses. It is worth naming the notation
+that (2) inherits. The vertical bar and the angle brackets come from the Dirac
+bracket, where &lang;&phi;|&psi;&rang; is a sesquilinear form and, when the arguments
+are drawn from the same space, an inner product. That reading is tempting and
+wrong, and the failure is elementary enough to state as a lemma rather than a
+remark.</p>
+
+<h3>B. The bracket is not an inner product</h3>
+
+<p><span class="t">Lemma 1 (no bilinearity).</span> Let
+<i>F</i>(<i>v<sub>A</sub></i>, <i>w<sub>A</sub></i>; <i>v<sub>B</sub></i>,
+<i>w<sub>B</sub></i>) be the left slot of (2). For &lambda; &ne; 0 and
+<i>w<sub>A</sub></i> &ne; <i>w<sub>B</sub></i>,
+<i>F</i>(&lambda;<i>v<sub>A</sub></i>, <i>w<sub>A</sub></i>;
+<i>v<sub>B</sub></i>, <i>w<sub>B</sub></i>) = &lambda;<i>F</i>(<i>v<sub>A</sub></i>,
+<i>w<sub>A</sub></i>; <i>v<sub>B</sub></i>, <i>w<sub>B</sub></i>) fails unless
+&lambda; = 1 or <i>v<sub>B</sub></i> = 0. With (<i>v<sub>A</sub></i>, <i>w<sub>A</sub></i>)
+= (1, 0.5), (<i>v<sub>B</sub></i>, <i>w<sub>B</sub></i>) = (3, 1.5), &beta; = 1 and
+&lambda; = 2, the two sides differ by 2.1932.</p>
+
+<p><i>Proof.</i> Put &alpha; = <i>m<sub>A</sub></i>/(<i>m<sub>A</sub></i>&nbsp;+&nbsp;<i>m<sub>B</sub></i>);
+then <i>F</i> = &alpha;<i>v<sub>A</sub></i> + (1&minus;&alpha;)<i>v<sub>B</sub></i>.
+Scaling <i>v<sub>A</sub></i> by &lambda; gives &lambda;&alpha;<i>v<sub>A</sub></i> +
+(1&minus;&alpha;)<i>v<sub>B</sub></i>, while &lambda;<i>F</i> gives
+&lambda;&alpha;<i>v<sub>A</sub></i> + &lambda;(1&minus;&alpha;)<i>v<sub>B</sub></i>.
+These agree for every &lambda; only if (1&minus;&alpha;)<i>v<sub>B</sub></i> = 0. The
+numerical discrepancy is stored in <i>results/e13_binary_algebra.json</i>. &#9633;</p>
+
+<p>The consequence is not merely notational. A reader who treats the bracket as an
+inner product will expect to be able to superpose, to normalise, and to project, and
+none of those operations is available. In the remainder of the paper I therefore
+write the two slots explicitly as (<i>V</i>, <i>W</i>) and never use the bracket
+again. What the operation does have is a clean algebraic description, and it is
+worth more than the geometric one it lacks.</p>
+
+<h3>C. The ledger monoid</h3>
+
+<div class="thm">
+<p><span class="t">Theorem 1 (the ledger).</span></p>
+<div class="body">
+<p>Fix &beta; and consider records (<i>v</i>, <i>w</i>) with
+<i>v</i> &isin; R<sup><i>d</i></sup>. Then:</p>
+<p>(i) &#8904;<sub>&beta;</sub> is commutative;</p>
+<p>(ii) &#8904;<sub>&beta;</sub> is associative, and the aggregate of a family
+depends only on the multiset of records, not on the order or the bracketing of the
+merges;</p>
+<p>(iii) &#8904;<sub>&beta;</sub> is not idempotent:
+(<i>v</i>, <i>w</i>) &#8904;<sub>&beta;</sub> (<i>v</i>, <i>w</i>) =
+(<i>v</i>, <i>w</i> + &beta;<sup>&minus;1</sup>ln&nbsp;2), so a
+<i>k</i>-fold duplicate shifts the score by &beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i>
+and never changes the value;</p>
+<p>(iv) there is no identity element among finite records and the operation is not
+invertible;</p>
+<p>(v) the map &sigma;(<i>v</i>, <i>w</i>) = (<i>m</i>, <i>mv</i>) is a sufficient
+statistic: <i>Z</i> and <i>S</i> = &sum;<sub><i>i</i></sub><i>m<sub>i</sub>v<sub>i</sub></i>
+add over merges, and (<i>V</i>, <i>W</i>) is recovered from
+(<i>Z</i>, <i>S</i>) by division and logarithm;</p>
+<p>(vi) the pair is invariant to a common score shift,
+<i>w<sub>i</sub></i> &rarr; <i>w<sub>i</sub></i> + <i>c</i>, which leaves <i>V</i>
+and every weight unchanged and shifts <i>W</i> by <i>c</i>.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> Commutativity is self-evident in (2). For associativity, observe
+that the right slot of <i>A</i>&#8904;<i>B</i> is
+&beta;<sup>&minus;1</sup>ln(<i>m<sub>A</sub></i>+<i>m<sub>B</sub></i>), so the mass
+of an aggregate is the sum of the masses, and the left slot is the mass-weighted mean;
+merging the aggregate with <i>C</i> therefore yields mass
+<i>m<sub>A</sub></i>+<i>m<sub>B</sub></i>+<i>m<sub>C</sub></i> and the
+three-record weighted mean, which is symmetric. Formally, in the coordinates of (v)
+the fusion is vector addition and the pair is a function of the sum, so
+associativity and commutativity of the operation follow from those of addition.
+For (iii), set <i>v<sub>A</sub></i> = <i>v<sub>B</sub></i> = <i>v</i>: the left slot
+is <i>v</i> and the right slot is &beta;<sup>&minus;1</sup>ln(2e<sup>&beta;w</sup>) =
+<i>w</i> + &beta;<sup>&minus;1</sup>ln&nbsp;2; induction gives the <i>k</i>-fold
+claim. For (iv), an identity would need mass zero, which no finite record has, and
+&sigma; is many-to-one, so no inverse exists. Part (vi) is immediate from
+<i>m<sub>i</sub></i> &rarr; e<sup>&beta;<i>c</i></sup><i>m<sub>i</sub></i>. The full
+argument for (ii) and (v) is in Appendix A.1. &#9633;</p>
+
+<p>Four consequences are worth spelling out, because each corresponds to a failure
+mode seen in practice.</p>
+
+<p><i>Duplication.</i> Part (iii) says that two identical records are not one record.
+If a pipeline de-duplicates before fusing, it changes the score by
+&beta;<sup>&minus;1</sup>ln&nbsp;2 per doubling, and through the score it changes
+every downstream weight and every decision threshold that consumes the score. The
+error is large when &beta; is small: 0.69 nats at &beta; = 1, 6.93 at &beta; = 0.1.
+Because the size is known, the defect is fixable; the experiment confirms the
+prediction to 2.8&times;10<sup>&minus;17</sup> across three temperatures.</p>
+
+<p><i>Order.</i> Part (ii) is why a distributed merge can be arranged in any tree.
+A reviewer might ask why associativity needs proof for an operation that is a
+weighted average. The answer is that the two slots interact: the right slot of one
+fusion is the score of the next, so associativity of the <i>pair</i> is not the
+associativity of a mean, and it fails for the natural alternative in which the score
+is carried along unchanged. Experiment E16 merges up to 10,000 records in blocks of
+1, 10 and 100 with random tree structures and finds the tree result equal to the
+<i>n</i>-ary result to a relative 3.7&times;10<sup>&minus;16</sup>.</p>
+
+<p><i>Distribution.</i> Part (v) says an aggregate is summarised by two numbers per
+coordinate, total mass and mass-weighted sum, both additive. A pipeline therefore
+merges partial aggregates exactly, in any tree, without revisiting the leaves. This
+is the property the mergeable-summaries literature calls mergeability [16, 17], and
+the ledger is a linear sketch in exactly their sense. Nothing here is new; what
+Section IV adds is the converse direction, namely the price of a summary that is
+<i>not</i> of this shape.</p>
+
+<p><i>Gauge.</i> Part (vi) says the score has a free additive constant. That is why
+scores from two sources cannot be compared until a common offset is fixed, and why a
+system that merges scores produced under different calibrations is silently wrong:
+the weights are invariant to the offset but the merged score is not, and the merged
+score is what the next merge consumes.</p>
+
+<h3>D. The <i>n</i>-ary form and order independence</h3>
+
+<div class="thm">
+<p><span class="t">Theorem 2 (the binary law generates the <i>n</i>-ary form).</span></p>
+<div class="body">
+<p>For records (<i>v</i><sub>1</sub>, <i>w</i><sub>1</sub>), &hellip;,
+(<i>v<sub>n</sub></i>, <i>w<sub>n</sub></i>) with <i>n</i> &ge; 2, every binary
+bracketing of &#8904;<sub>&beta;</sub> over the <i>n</i> records yields the pair</p>
+<div class="eq">
+V = &sum;<sub>i</sub> p<sub>i</sub>v<sub>i</sub>, &nbsp;&nbsp;
+W = &beta;<sup>&minus;1</sup> ln &sum;<sub>i</sub> e<sup>&beta;w<sub>i</sub></sup>,
+&nbsp;&nbsp; p<sub>i</sub> = e<sup>&beta;w<sub>i</sub></sup>/&sum;<sub>j</sub> e<sup>&beta;w<sub>j</sub></sup>.
+<span class="num">(3)</span>
+</div>
+<p>Consequently a binary implementation, an <i>n</i>-ary implementation and a
+tree-structured merge produce the same pair up to floating-point rounding.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> Induction on <i>n</i>; the case <i>n</i> = 2 is (2). Suppose the
+claim holds for a subset <i>S</i> of size <i>n</i>&minus;1, with summary mass
+&sum;<sub><i>i</i>&isin;<i>S</i></sub><i>m<sub>i</sub></i> and numerator
+&sum;<sub><i>i</i>&isin;<i>S</i></sub><i>m<sub>i</sub>v<sub>i</sub></i>. Fusing with
+the remaining record multiplies the mass by e<sup>&beta;<i>w<sub>n</sub></i></sup>
+and adds the corresponding numerator, which is the <i>n</i>-ary expression.
+Associativity (Theorem 1(ii)) removes the dependence on bracketing. &#9633;</p>
+
+<p>Numerically, (3) is not evaluated as printed, for the reason given in Section II.B;
+the library shifts by the maximum score. The identity also settles a design question
+that is otherwise arbitrary: an aggregate that carries <i>Z</i> can be merged with
+another aggregate without knowing how many records either contains, because
+<i>Z</i> is the sufficient statistic and e<sup>&beta;W</sup> recovers it. An aggregate
+that carries only <i>V</i> cannot be merged at all without an assumption. That
+asymmetry is Theorem 1(v) read as an interface, and Section IV quantifies the
+assumption.</p>
+
+<div class="tblwrap"><caption><b>Table 1.</b> Algebraic checklist for the operation of (2), with the
+measurement that produced each verdict. Source:
+<i>results/e13_binary_algebra.json</i>, <i>results/e16_tree_merge.json</i>.</caption><table>
+
+<thead><tr><th>Property</th><th>Holds</th><th>Evidence</th></tr></thead>
+<tbody>
+<tr><td>Commutative</td><td>yes</td><td>max defect 5.6&times;10<sup>&minus;16</sup>, 200 random pairs</td></tr>
+<tr><td>Associative, both slots</td><td>yes</td><td>max gap to the <i>n</i>-ary form 8.9&times;10<sup>&minus;16</sup>, 300 triples</td></tr>
+<tr><td>Tree merging equals <i>n</i>-ary merging</td><td>yes</td><td>relative gap 3.7&times;10<sup>&minus;16</sup> up to 10<sup>4</sup> records</td></tr>
+<tr><td>Idempotent</td><td><b>no</b></td><td>offset &beta;<sup>&minus;1</sup>ln 2, residual &le; 2.8&times;10<sup>&minus;17</sup></td></tr>
+<tr><td>Homogeneous in the value</td><td><b>no</b></td><td>discrepancy 2.19 at &lambda; = 2</td></tr>
+<tr><td>Has an identity element</td><td><b>no</b></td><td>would require zero mass</td></tr>
+<tr><td>Invertible</td><td><b>no</b></td><td>the sufficient statistic is many-to-one</td></tr>
+<tr><td>Invariant to a common score shift</td><td>yes (value), shift (score)</td><td>Theorem 1(vi)</td></tr>
+</tbody>
+</table></div>
+
+<h2>IV. The ledger is necessary: an impossibility theorem and its sharp constant</h2>
+
+<h3>A. The interface question</h3>
+
+<p>Suppose a pipeline is partitioned across <i>k</i> shards. Each shard holds a
+collection of scored records whose union is the full collection. Two designs are
+possible for the interface between a shard and the merge service. In the first, the
+shard reports the pair (<i>V<sub>B</sub></i>, <i>W<sub>B</sub></i>) computed from its
+own records, and the merge service combines the reported pairs using (2). In the
+second, the shard reports only its value <i>V<sub>B</sub></i> &mdash; possibly with the
+number of records <i>n<sub>B</sub></i> &mdash; and the merge service does what it can.</p>
+
+<p>The first design is exact by Theorem 1: the pair determines the mass
+<i>Z<sub>B</sub></i> = e<sup>&beta;<i>W<sub>B</sub></i></sup> and the numerator
+<i>S<sub>B</sub></i> = <i>Z<sub>B</sub>V<sub>B</sub></i>, both additive, so the merge
+is a two-line computation with no error at all. The second design is what a
+cost-conscious implementation drifts toward, because a value is one number and a pair
+is two, and because a downstream consumer often wants only the value. It is also
+what happens by accident whenever a shard computes its own average, reports it, and
+the merge service averages the reports.</p>
+
+<p>This section settles what the second design costs. The answer has three parts:
+the set of global values that remain possible is exactly the convex hull of the
+reported values; every merge rule has worst-case error at least the radius of that
+hull, which in one dimension is half the range, and the midpoint attains it; and if
+the mass is carried but rounded, the error is bounded by
+<i>D</i>&delta;/(1&minus;&delta;). None of these statements is deep. Together they
+convert a stylistic choice into a quantitative one, which is what an architect needs
+in order to decide how much of the ledger to keep.</p>
+
+<h3>B. What a value-only summary can and cannot determine</h3>
+
+<div class="thm">
+<p><span class="t">Theorem 3 (the reachable set is the hull).</span></p>
+<div class="body">
+<p>Fix &beta; and let a partition into <i>k</i> blocks have reported values
+<i>V</i><sub>1</sub>, &hellip;, <i>V<sub>k</sub></i> &isin; R<sup><i>d</i></sup>.
+Consider any merge rule &Gamma; whose input is the collection of pairs
+(<i>V<sub>B</sub></i>, <i>w<sub>B</sub></i><sup>(inside)</sup>) in the sense that it
+may use anything computable from within block <i>B</i> except the block's normalising
+mass. Then the set of global values compatible with what &Gamma; sees is exactly</p>
+<div class="eq">
+S = conv{ V<sub>1</sub>, &hellip;, V<sub>k</sub> },
+<span class="num">(4)</span>
+</div>
+<p>the convex hull of the reported values. In particular the number of records per
+block, and any function of the within-block weights, adds nothing.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> That <i>S</i> &sube; conv{<i>V<sub>B</sub></i>} is immediate: the
+global value is a convex combination of the block values with weights
+&pi;<sub><i>B</i></sub> = <i>Z<sub>B</sub></i>/<i>Z</i> &ge; 0 summing to one.</p>
+
+<p>For the reverse inclusion, take any &pi; in the simplex. It is enough to exhibit,
+for each block <i>B</i>, a block of records whose reported value is
+<i>V<sub>B</sub></i> and whose mass is any prescribed positive number
+<i>M<sub>B</sub></i>. Take a single record (<i>V<sub>B</sub></i>,
+<i>w<sub>B</sub></i>) with <i>w<sub>B</sub></i> =
+&beta;<sup>&minus;1</sup>ln&nbsp;<i>M<sub>B</sub></i>: its value is
+<i>V<sub>B</sub></i> and its mass is <i>M<sub>B</sub></i>. Then the global value is
+&sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub><i>V<sub>B</sub></i> for
+&pi;<sub><i>B</i></sub> = <i>M<sub>B</sub></i>/&sum;<sub><i>C</i></sub><i>M<sub>C</sub></i>,
+and since the <i>M<sub>B</sub></i> are free the weights range over the whole
+simplex. The same construction works when blocks must contain at least
+<i>n<sub>B</sub></i> records, because adding records with the block value
+<i>V<sub>B</sub></i> changes neither the value nor the sensitivity to the free mass.
+Appendix A.2 gives the construction in the multi-record case. &#9633;</p>
+
+<p>The mechanism deserves a name, because it recurs. Shifting every score inside a
+block by the same constant <i>c</i> multiplies that block's mass by
+e<sup>&beta;<i>c</i></sup> and leaves every within-block weight, hence the block's
+value, unchanged (Theorem 1(vi)). A value-only summary is therefore blind to a
+quantity that the merge needs, and blind in a way that cannot be repaired by any
+local computation: the information was never collected.</p>
+
+<div class="note">
+<p><b>A concrete pair.</b> Let block <i>A</i> contain two records with values 0 and
+10 and scores 0 and 0, and let block <i>A&#8242;</i> contain two records with the same
+two values and scores 3 and 3. Both blocks report <i>V<sub>A</sub></i> = 5.0 and
+<i>n<sub>A</sub></i> = 2; their masses are 2.0 and 40.17. Merge each with a third
+block holding a single record of value 0 and score 0. The two global values are
+<b>3.3333</b> and <b>4.8786</b> &mdash; a difference of <b>1.5452</b> on a value range
+of 10, produced by two datasets that are indistinguishable to any merge rule that
+looks at values and counts. The numbers are regenerated by experiment E12 and stored
+in <i>results/e12_impossibility.json</i>.</p>
+</div>
+
+<p>The pair also shows why a pipeline cannot repair the omission downstream. Once the
+mass is gone, two different datasets are consistent with the same report, so no
+post-hoc adjustment, calibration or reweighting can separate them: a rule that
+handles one of the two correctly must mishandle the other. That is the sense in which
+the ledger is necessary rather than merely advisable.</p>
+
+<figure>
+<img src="figures/fig1_reachable.svg" alt="mass-blind merging against the minimax bound"/>
+<figcaption><b>Figure 1.</b> Worst-case error of equal weighting against the minimax
+worst-case error, over 300 instances with two to six blocks and values drawn from a
+normal distribution. Every point lies on or above the diagonal: the equal-weight
+merge is never better than the minimax rule, and it coincides with it only when the
+mean happens to be the midpoint of the extremes. The horizontal axis is the sharp
+constant of Theorem 4, namely half the range. Source:
+<i>results/e12_impossibility.json</i>.</figcaption>
+</figure>
+
+<h3>C. The sharp constant, and why the midpoint is forced</h3>
+
+<div class="thm">
+<p><span class="t">Theorem 4 (minimax constant for a lossy ledger).</span></p>
+<div class="body">
+<p>Under the hypotheses of Theorem 3, for every merge rule &Gamma; that sees the block
+values,</p>
+<div class="eq">
+sup<sub>consistent datasets</sub> &Vert;&Gamma; &minus; V&Vert;
+&ge; rad(S) := min<sub>c &isin; R<sup>d</sup></sub> max<sub>B</sub>
+&Vert;V<sub>B</sub> &minus; c&Vert;,
+<span class="num">(5)</span>
+</div>
+<p>and the bound is attained: the rule
+&Gamma;* = arg&nbsp;min<sub>c</sub> max<sub>B</sub>
+&Vert;<i>V<sub>B</sub></i>&minus;<i>c</i>&Vert; has worst-case error exactly
+rad(<i>S</i>). In one dimension rad(<i>S</i>) = &frac12;(max<sub><i>B</i></sub><i>V<sub>B</sub></i>
+&minus; min<sub><i>B</i></sub><i>V<sub>B</sub></i>) and &Gamma;* is the midpoint.
+Moreover every averaging rule with fixed weights &pi; has worst-case error
+max<sub><i>B</i></sub>|&sum;<sub><i>C</i></sub>&pi;<sub><i>C</i></sub><i>V<sub>C</sub></i>
+&minus; <i>V<sub>B</sub></i>| &ge; rad(<i>S</i>), with equality only when the weighted
+mean is itself the Chebyshev centre.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> By Theorem 3 the compatible values form <i>S</i>. Two points of
+<i>S</i> at distance 2&nbsp;rad(<i>S</i>) apart exist by the definition of the
+Chebyshev radius applied to the finite set {<i>V<sub>B</sub></i>}: choose
+<i>V<sub>B</sub></i>* and <i>V<sub>C</sub></i>** attaining the diameter, both of
+which lie in <i>S</i>. Any &Gamma; &isin; R<sup><i>d</i></sup> has
+max(&Vert;&Gamma;&minus;<i>V<sub>B</sub></i>*&Vert;,
+&Vert;&Gamma;&minus;<i>V<sub>C</sub></i>**&Vert;) &ge; &frac12;&Vert;<i>V<sub>B</sub></i>*
+&minus; <i>V<sub>C</sub></i>**&Vert; &ge; rad(<i>S</i>). Attainment is the definition
+of the Chebyshev centre, which exists because the function
+max<sub><i>B</i></sub>&Vert;<i>V<sub>B</sub></i>&minus;<i>c</i>&Vert; is convex and
+coercive. The statement about fixed-weight averages follows by taking the two extreme
+blocks. In one dimension the Chebyshev centre of a finite set is its midpoint and the
+radius is half the range. Appendix A.3 gives the details. &#9633;</p>
+
+<p>Three readings matter.</p>
+
+<p><i>The bound is not loose.</i> Experiment E12 evaluates the minimax rule on 300
+random instances and finds its realised worst-case error equal to half the range to
+within 8.9&times;10<sup>&minus;16</sup>, and every compatible value inside the hull to
+within the same tolerance. A practitioner can therefore use half the range of the
+shard values as the error bar of a value-only pipeline with no further analysis:
+if the shards report 10 and 30, the honest statement about the merged quantity is
+"20 &plusmn; 10", not "20".</p>
+
+<p><i>Equal weighting is never the answer.</i> The mean of the reported values is
+admissible only when it coincides with the midpoint of the extremes, which happens
+for symmetric configurations and fails otherwise; over the 300 instances the ratio of
+its worst-case error to the optimum ranged from 1.000 to 1.463 with mean 1.128. This
+is the precise form of the folk observation that averaging shard means is unsafe: the
+danger is not bias but the absence of a guarantee.</p>
+
+<p><i>The bound is per merge.</i> If the reported values are themselves results of
+earlier merges, the hull argument applies level by level, and the radii add along the
+longest path in the merge tree rather than staying bounded. A pipeline that drops
+masses at every level therefore degrades with depth, which no amount of care at any
+single level can prevent.</p>
+
+<h3>D. A lossy ledger: what quantisation costs</h3>
+
+<p>The opposite extreme is to carry the mass but to store it cheaply. Suppose each
+block reports a mass <i>M&#770;<sub>B</sub></i> correct to relative precision
+&delta;, that is |<i>M&#770;<sub>B</sub></i> &minus; <i>M<sub>B</sub></i>| &le;
+&delta;<i>M<sub>B</sub></i>, and that the service merges the reported pairs naively.
+The question is how much of the guarantee survives.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 5 (quantised ledger budget).</span></p>
+<div class="body">
+<p>Let the values have diameter <i>D</i> and let the masses be known to relative
+precision &delta; &isin; (0,1). Then for the merged value <i>V&#770;</i> computed from
+the rounded masses,</p>
+<div class="eq">
+|V&#770; &minus; V| &le; D &middot; &delta;/(1 &minus; &delta;),
+&nbsp;&nbsp;and&nbsp;&nbsp;
+TV(&pi;&#770;, &pi;) &le; &delta;/(1 &minus; &delta;).
+<span class="num">(6)</span>
+</div>
+<p>Both statements are independent of the number of blocks, and neither requires the
+rounding errors to be independent or unbiased.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> Write <i>Z</i> = &sum;<sub><i>B</i></sub><i>M<sub>B</sub></i> and
+<i>Z&#770;</i> = &sum;<sub><i>B</i></sub><i>M&#770;<sub>B</sub></i>, so
+|<i>Z&#770;</i>&minus;<i>Z</i>| &le; &delta;<i>Z</i> and
+<i>Z&#770;</i> &ge; (1&minus;&delta;)<i>Z</i>. For each block,</p>
+
+<div class="eq">
+|&pi;&#770;<sub>B</sub> &minus; &pi;<sub>B</sub>| &le;
+|M&#770;<sub>B</sub>&minus;M<sub>B</sub>|/Z&#770; +
+M<sub>B</sub>|Z&#770;&minus;Z|/(Z Z&#770;) &le;
+2&delta;&pi;<sub>B</sub>/(1&minus;&delta;),
+</div>
+
+<p>and summing over blocks gives &sum;<sub><i>B</i></sub>|&pi;&#770;<sub><i>B</i></sub>
+&minus; &pi;<sub><i>B</i></sub>| &le; 2&delta;/(1&minus;&delta;), half of which is the
+total variation. Since <i>V</i> is the expectation of a bounded value under &pi;,
+|&sum;<sub><i>B</i></sub>&pi;&#770;<sub><i>B</i></sub><i>V<sub>B</sub></i> &minus;
+&sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub><i>V<sub>B</sub></i>| &le;
+<i>D</i>&nbsp;TV(&pi;&#770;,&pi;) &le; <i>D</i>&delta;/(1&minus;&delta;).
+&#9633;</p>
+
+<p>The bound is a worst case over admissible roundings and it is not tight: in
+experiment E15 (150 instances per &delta;, four values of &delta; from 0.01 to 0.25)
+the maximum observed ratio of measured error to bound was 0.31. I state the
+deficiency rather than hide it, and I do not claim the constant is optimal; what the
+theorem provides is a usable error bar that does not grow with the number of blocks,
+which is the property a builder needs. Figure 2 shows the measured error and the bound
+against &delta;.</p>
+
+<figure>
+<img src="figures/fig2_quantisation.svg" alt="quantisation error against the certified bound"/>
+<figcaption><b>Figure 2.</b> Merge error when the masses are known only to relative
+precision &delta;, against the certified bound <i>D</i>&delta;/(1&minus;&delta;) of
+Theorem 5. Both axes are logarithmic; each point aggregates 150 random instances.
+The measured error tracks the bound's slope in &delta; and stays a factor of three to
+four below it, which is the slack of the worst-case analysis and not an error in it.
+Source: <i>results/e15_quantisation.json</i>.</figcaption>
+</figure>
+
+<p>One corollary is useful in its own right, and it is the reason quantised ledgers
+are practical at all. Masses are positive and additive, so their relative rounding
+error does not compound when they are summed: if each of <i>k</i> masses carries
+relative error at most &delta;, the sum carries relative error at most &delta;, no
+matter how the additions are bracketed. Experiment E15 verifies this on a tree
+summation with alternating rounding and finds a final relative error of 0.0011 at
+&delta; = 0.01 and 0.0111 at &delta; = 0.1, both within the promised envelope.</p>
+
+<h3>E. What this section settles, and what it leaves open</h3>
+
+<p>The section converts a design habit into three statements a system can be held to.
+A pipeline that reports values only has an error bar of at least half the range of its
+shard values, and the midpoint is the best it can do. A pipeline that reports
+(<i>V</i>, <i>W</i>) has no error at all. A pipeline that reports (<i>V</i>,
+<i>W</i>) with a quantised mass has the error bar (6). The choice of how much ledger
+to keep is therefore a choice of a constant, not a leap of faith.</p>
+
+<p>Three questions are left open, and I state them because they are the ones I would
+ask a reviewer to press on. First, the constants are for the worst case over
+admissible datasets, and the worst case is attained by adversarial masses; a
+distributional or average-case statement, of the kind the mergeable-summaries
+literature provides for specific sketches [16], would be more useful in practice and
+is not attempted here. Second, the constraint in Theorem 3 is exclusion of the mass
+specifically; a broader treatment would ask which <i>other</i> scalar summaries of a
+block are lossy, and I can see how to repeat the argument for any summary that is
+invariant to the score shift of Theorem 1(vi), but not for arbitrary summaries.
+Third, if shards are allowed to communicate adaptively the problem changes into a
+communication-constrained estimation problem with its own lower-bound machinery [19],
+and the interaction between those bounds and the hull argument here is not worked
+out.</p>
+
+<h2>V. Temperature as a control</h2>
+
+<p>Every practitioner who has fitted a softmax has met &beta; under a different name:
+inverse temperature, sharpening parameter, scale, gain, logit multiplier. It is
+usually tuned by hand or by a grid search and then left alone. In the ledger the
+parameter cannot be left alone, because it appears in both slots: the value it
+produces is not a diagnostic but the input to the next merge, and the score it
+produces is what a downstream consumer thresholds. This section gives the calculus
+that makes &beta; a design variable with predictable consequences.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 6 (temperature calculus).</span></p>
+<div class="body">
+<p>Fix values <i>v</i> and scores <i>w</i>. For finite non-zero &beta;, with
+<i>p</i>, <i>V</i> and <i>Z</i> as in (1) and (3):</p>
+<p>(i) d<i>V</i>/d&beta; = Cov<sub><i>p</i></sub>(<i>v</i>, <i>w</i>),
+coordinate-wise;</p>
+<p>(ii) d<i>W</i>/d&beta; = (&sum;<sub><i>i</i></sub><i>p<sub>i</sub>w<sub>i</sub></i>
+&minus; <i>W</i>)/&beta;;</p>
+<p>(iii) d<sup>2</sup>ln&thinsp;<i>Z</i>/d&beta;<sup>2</sup> =
+Var<sub><i>p</i></sub>(<i>w</i>) &ge; 0, so ln&thinsp;<i>Z</i> and <i>W</i> are
+convex in &beta;;</p>
+<p>(iv) if the values are the scores themselves, d<i>V</i>/d&beta; =
+Var<sub><i>p</i></sub>(<i>w</i>) &ge; 0, with equality only when <i>p</i> is
+supported on one score value;</p>
+<p>(v) d<sup>3</sup>ln&thinsp;<i>Z</i>/d&beta;<sup>3</sup> = &kappa;<sub>3</sub>(<i>w</i>),
+the third cumulant, which governs whether the sensitivity is monotone or has an
+interior maximum;</p>
+<p>(vi) as &beta; &rarr; +&infin;, <i>p</i> concentrates on the arg&nbsp;max of
+<i>w</i>; as &beta; &rarr; 0, <i>p</i> tends to the uniform vector and <i>V</i> to the
+unweighted mean.</p>
+</div>
+</div>
+
+<p>The proofs are differentiation and are collected in Appendix A.4. The readings are
+what matter. Part (iii) says ln&thinsp;<i>Z</i> is convex in &beta;, so the map
+&beta; &mapsto; <i>W</i> has at most one minimum in any interval where its derivative
+changes sign once, and a one-dimensional search for a &beta; meeting a score target is
+well posed whenever the target lies in the range of the derivative. Part (iv) says that
+when records are scored by the quantity being averaged, raising &beta; raises the
+fused value: the aggregate rewards the records it already trusts. That sounds like a
+tautology and is not, because the statement concerns a derivative rather than a level,
+and the derivative is a variance that can be large or small independently of the level.</p>
+
+<p>Part (v) is the part that surprises people, and it is the reason the calibration
+procedure below opens with a grid rather than a bisection. The sensitivity
+Var<sub><i>p</i></sub>(<i>w</i>) is a function of &beta; whose derivative at a point is
+the third cumulant of the scores; when that cumulant is negative across an interval,
+the sensitivity decreases monotonically, and when it changes sign the curve has an
+interior maximum. Figure 3 shows both behaviours on two five-record instances. For
+symmetric scores (&minus;2, &minus;1, 0, 1, 2) the sensitivity falls from 2.0000 to
+3.7&times;10<sup>&minus;44</sup> with no interior maximum over a 240-point grid. For
+skewed scores (0, 1, 2, 3, 10) it rises to 17.8629 at &beta; = 0.1543 and then
+collapses. A calibration routine that assumes monotonicity is correct on the first
+instance and wrong on the second, and no amount of validation monitoring will reveal
+which case it is in.</p>
+
+<figure>
+<img src="figures/fig3_temperature.svg" alt="sensitivity of the fused value to inverse temperature"/>
+<figcaption><b>Figure 3.</b> Self-scored sensitivity d<i>V</i>/d&beta; =
+Var<sub><i>p</i></sub>(<i>w</i>) against &beta; on a logarithmic axis for two
+five-record instances. Solid line and circles: symmetric scores, monotone decreasing.
+Dashed line and squares: skewed scores, with an interior maximum of 17.8629 at
+&beta; = 0.1543, marked. Only the skewed instance has a temperature at which the
+aggregate is maximally sensitive. Source:
+<i>results/e2_temperature_calculus.json</i>.</figcaption>
+</figure>
+
+<div class="tblwrap"><caption><b>Table 2.</b> Verification of Theorem 6 by central differences at step
+10<sup>&minus;6</sup>, 600 random cases per row. Errors are absolute against the
+analytic expression. Source: <i>results/e2_temperature_calculus.json</i>.</caption><table>
+
+<thead><tr><th>Identity</th><th class="num">Max abs. error</th><th class="num">Tolerance</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>d<i>V</i>/d&beta; = Cov<sub><i>p</i></sub>(<i>v</i>,<i>w</i>)</td><td class="num">2.98&times;10<sup>&minus;9</sup></td><td class="num">10<sup>&minus;4</sup></td><td>holds</td></tr>
+<tr><td>d<i>W</i>/d&beta; = (&Sigma;<i>p<sub>i</sub>w<sub>i</sub></i> &minus; <i>W</i>)/&beta;</td><td class="num">2.77&times;10<sup>&minus;9</sup></td><td class="num">10<sup>&minus;4</sup></td><td>holds</td></tr>
+<tr><td>d<sup>2</sup>ln&thinsp;<i>Z</i>/d&beta;<sup>2</sup> = Var<sub><i>p</i></sub>(<i>w</i>)</td><td class="num">8.47&times;10<sup>&minus;7</sup></td><td class="num">10<sup>&minus;4</sup></td><td>holds</td></tr>
+</tbody>
+</table></div>
+
+<h3>A. A worked example</h3>
+
+<p>The abstract statements are easier to trust with an instance small enough to check
+by hand. Five records: three model forecasts of the same quantity with validation
+scores, and two cheap heuristics, arranged so that the heuristics sit at opposite ends
+of the value range &mdash; the case that separates a weighted mean from a median and is
+therefore the case worth tabulating.</p>
+
+<div class="tblwrap"><caption><b>Table 3.</b> Worked example. Weights, fused value, score, sensitivity and
+effective number of records exp&thinsp;<i>H</i>(<i>p</i>) for values 10.4, 9.8, 11.7,
+8.9, 12.6 and scores 0.92, 0.86, 0.61, 0.35, 0.18. Source:
+<i>results/e14_worked_example.json</i>.</caption><table>
+
+<thead><tr><th class="num">&beta;</th><th>weights</th><th class="num">V</th><th class="num">W</th><th class="num">dV/d&beta;</th><th class="num">eff. records</th></tr></thead>
+<tbody>
+<tr><td class="num">0.25</td><td>0.217 0.214 0.201 0.188 0.180</td><td class="num">10.6473</td><td class="num">7.0319</td><td class="num">&minus;0.1278</td><td class="num">4.987</td></tr>
+<tr><td class="num">0.50</td><td>0.234 0.227 0.201 0.176 0.162</td><td class="num">10.6161</td><td class="num">3.8230</td><td class="num">&minus;0.1215</td><td class="num">4.950</td></tr>
+<tr><td class="num">1.00</td><td>0.269 0.253 0.197 0.152 0.128</td><td class="num">10.5586</td><td class="num">2.2331</td><td class="num">&minus;0.1083</td><td class="num">4.812</td></tr>
+<tr><td class="num">2.00</td><td>0.336 0.298 0.181 0.108 0.077</td><td class="num">10.4633</td><td class="num">1.4647</td><td class="num">&minus;0.0827</td><td class="num">4.364</td></tr>
+<tr><td class="num">4.00</td><td>0.448 0.353 0.130 0.046 0.023</td><td class="num">10.3394</td><td class="num">1.1205</td><td class="num">&minus;0.0446</td><td class="num">3.390</td></tr>
+<tr><td class="num">8.00</td><td>0.583 0.361 0.049 0.006 0.002</td><td class="num">10.2414</td><td class="num">0.9875</td><td class="num">&minus;0.0106</td><td class="num">2.389</td></tr>
+</tbody>
+</table></div>
+
+<p>Four readings, each a consequence of a different part of Theorem 6 rather than of
+these numbers.</p>
+
+<p><i>The sensitivity is negative.</i> The highest scores belong to the lowest
+forecasts, so raising &beta; moves the value down; the derivative reports the direction
+and its sign is the sign of the covariance (part i). A practitioner who assumes that
+raising the temperature trusts the best records and therefore raises the value has
+assumed a positive correlation that this instance does not have.</p>
+
+<p><i>Effective records fall faster than the top weight rises.</i> Between &beta; = 1
+and &beta; = 8 the leading weight rises from 0.269 to 0.583, but the effective number
+of records falls from 4.81 to 2.39. Even at &beta; = 8 the aggregate is not "mostly one
+record"; it is about two and a half. The exponential of the entropy is the honest
+measure of concentration and the top weight is not.</p>
+
+<p><i>Scores are not comparable across temperatures.</i> <i>W</i> falls from 7.03 to
+0.99 as &beta; rises, which looks like degradation and is not: <i>W</i> depends on
+&beta; through the partition sum, so comparing scores computed at different
+temperatures is a category error. Pipeline scores may be compared only at a fixed
+&beta;.</p>
+
+<p><i>The derivative is checkable.</i> At &beta; = 1 the analytic sensitivity is
+&minus;0.108319 and a central difference with step 10<sup>&minus;3</sup> gives
+&minus;0.1083194, a gap of 3.6&times;10<sup>&minus;7</sup>. That is the level at which
+all the finite-difference checks in this paper operate.</p>
+
+<h3>B. Calibrating &beta; against a requirement</h3>
+
+<p>The calculus becomes a procedure when a requirement is written as a derivative
+rather than a value. Two forms are common: a <i>sensitivity budget</i>, in which the
+fused value may move by at most <i>s</i> when &beta; moves within a tolerance band
+(which matters when &beta; is itself estimated), and a <i>sharpness target</i>, in
+which the effective number of records must stay below a cap (which matters when a
+small set of records must not dominate).</p>
+
+<p>In both forms the standard one-dimensional tools apply, with one caveat: because
+Var<sub><i>p</i></sub>(<i>w</i>) need not be monotone in &beta; (part v), bisection is
+valid only on a bracket where the sign of the derivative is fixed. The safe procedure
+evaluates the criterion on a coarse grid first.</p>
+
+<pre>Algorithm 1  Calibrate beta against a sensitivity budget
+input : scores w, values v, target |dV/dbeta| &lt;= s, bracket [b_lo, b_hi]
+output: beta meeting the budget, or a certificate that none exists in the bracket
+1  evaluate g(beta) = max_coordinate |Cov_p(v, w)| on a grid of 32 points
+2  if g(b_lo) &lt;= s return b_lo
+3  find the first adjacent pair (b_j, b_j+1) with g(b_j) &gt; s and g(b_j+1) &lt;= s
+4  if no such pair return "target not reachable inside the bracket"
+5  bisect 40 times on [b_j, b_j+1] using the exact covariance, not a difference
+6  return the right end of the final bracket</pre>
+
+<p>The procedure is deliberately dull and it is in the paper because the alternative
+&mdash; tuning &beta; until a validation metric stops improving &mdash; confounds two
+effects that Theorem 6 separates: the change in sensitivity, governed by a variance,
+and the change in the ranking, governed by the sign pattern of the score differences.
+When &beta; crosses the reciprocal of a score gap the ranking flips, and no amount of
+monitoring tells the operator that a flip happened rather than a gradual reweighting.</p>
+
+<h2>VI. Coarse-graining accounting</h2>
+
+<h3>A. The situation</h3>
+
+<p>A pipeline that fuses a million records is never evaluated in one place. Records
+arrive in shards, each shard is summarised, and the summaries are merged. Section III
+showed that the summary (<i>Z</i>, <i>S</i>) merges exactly and Section IV showed that
+a summary without <i>Z</i> cannot. This section answers the remaining accounting
+question: when a shard is summarised <i>coarsely</i>, so that its records are grouped
+into blocks and only block-level quantities are combined, what is lost, and can the
+loss be corrected from the summary?</p>
+
+<div class="thm">
+<p><span class="t">Theorem 7 (coarse-graining gap).</span></p>
+<div class="body">
+<p>Let &beta; &gt; 0 and let the records be partitioned into blocks
+<i>B</i> = 1, &hellip;, <i>k</i>, with masses
+<i>m<sub>B</sub></i> = &sum;<sub><i>i</i>&isin;<i>B</i></sub>e<sup>&beta;<i>w<sub>i</sub></i></sup>,
+shares &pi;<sub><i>B</i></sub> = <i>m<sub>B</sub></i>/<i>Z</i> and block scores
+<i>W<sub>B</sub></i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>m<sub>B</sub></i>. Then</p>
+<div class="eq">
+W = &sum;<sub>B</sub> &pi;<sub>B</sub> W<sub>B</sub> + &beta;<sup>&minus;1</sup> H(&pi;),
+<span class="num">(7)</span>
+</div>
+<p>with H(&pi;) the Shannon entropy of the block shares, so</p>
+<div class="eq">
+0 &le; gap &le; &beta;<sup>&minus;1</sup> ln k,
+<span class="num">(8)</span>
+</div>
+<p>with equality in the upper bound exactly when the block masses are equal. For
+&beta; &lt; 0 the identity holds and both inequalities reverse, since
+&beta;<sup>&minus;1</sup> is then negative; the implementation returns a signed gap.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> Since <i>Z</i> = &sum;<sub><i>B</i></sub><i>m<sub>B</sub></i>,
+&beta;<sup>&minus;1</sup>ln&nbsp;<i>Z</i> &minus;
+&sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub>&beta;<sup>&minus;1</sup>ln&nbsp;<i>m<sub>B</sub></i>
+= &beta;<sup>&minus;1</sup>[&minus;&sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub>ln(<i>m<sub>B</sub></i>/<i>Z</i>)]
+= &beta;<sup>&minus;1</sup>H(&pi;). The gap is non-negative because an entropy is; the
+upper bound is the maximum of the entropy on <i>k</i> points, attained exactly at the
+uniform distribution, which corresponds to equal masses. Appendix A.5 gives the
+argument in full. &#9633;</p>
+
+<p>Three consequences matter to a builder. First, the loss is signed: a block-wise
+evaluation of the score under-estimates it for &beta; &gt; 0, and the shortfall is
+exactly an entropy. Second, the shortfall is computable from the block masses alone,
+so a merge service can correct it without ever seeing the records. Third, the
+shortfall grows only logarithmically in the number of blocks &mdash; splitting a
+pipeline into a thousand shards instead of ten costs at most an extra
+&beta;<sup>&minus;1</sup>ln&nbsp;100 &asymp; 4.6/&beta; nats &mdash; which is why
+sharding is cheap and why the honest worry is Section IV's mass, not this gap.</p>
+
+<p>I am careful about the status of this result. The ingredients are classical: (7) is
+the Gibbs variational principle read in one line and (8) is the elementary
+maximum-entropy bound [2]. What I have not found in the fusion-operator literature is
+the triple of properties that makes it an operating rule rather than an inequality:
+exactness, computability from the summary alone, and a closed-form worst case. Section
+IX records that as a repackaging, not as a new result.</p>
+
+<figure>
+<img src="figures/fig4_gap_bound.svg" alt="realised gap against its bound"/>
+<figcaption><b>Figure 4.</b> Realised gaps against their bounds for
+<i>k</i> &isin; {2, 4, 8} blocks and &beta; &isin; {0.5, 1, 2}, with block shares drawn
+from Dirichlet distributions of concentration 0.2, 1 and 20 so that the spread from
+near-degenerate to near-uniform is covered. No point lies above the line
+gap = &beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i>. An implementation can therefore quote
+a worst-case correction before seeing the data. Source:
+<i>results/e3_coarse_graining.json</i>.</figcaption>
+</figure>
+
+<h3>B. Levels, and the chain rule</h3>
+
+<p>A real pipeline has more than one level: records into shards, shards into regions,
+regions into a final aggregate. Theorem 7 applies at each level and the corrections
+compose in the way entropy does.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 8 (chain rule for coarse graining).</span></p>
+<div class="body">
+<p>Let the fine partition refine the coarse partition. Then</p>
+<div class="eq">
+gap(fine) = gap(coarse) + &sum;<sub>B</sub> &pi;<sub>B</sub> gap<sub>B</sub>(within).
+<span class="num">(9)</span>
+</div>
+<p>Taking the fine partition to be the singletons,</p>
+<div class="eq">
+gap(singletons) = &beta;<sup>&minus;1</sup> H(p),
+<span class="num">(10)</span>
+</div>
+<p>with H(p) the Shannon entropy of the weight vector.</p>
+</div>
+</div>
+
+<p><i>Proof sketch.</i> Equation (9) is the Shannon chain rule
+H(&pi;<sup>fine</sup>) = H(&pi;<sup>coarse</sup>) +
+&sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub>H(&pi;<sub>&middot;|<i>B</i></sub>)
+combined with (7) at each level; (10) sets the fine partition to singletons, for which
+the within-block entropies vanish. Appendix A.6 gives both derivations. &#9633;</p>
+
+<p>Equation (10) is a good way to remember the construction: the total distance between
+the global score and the score obtained by treating every record as its own block is
+the entropy of the weight vector divided by &beta;, which is also the logarithm of the
+effective number of records. The pipeline's accounting error and its effective sample
+size are the same number seen from two sides. Experiment E4 confirms both to machine
+precision: over 60 random instances with 32 records and three temperatures the chain
+residual never exceeded 8.9&times;10<sup>&minus;16</sup> and the entropy identity held to
+1.8&times;10<sup>&minus;15</sup>.</p>
+
+<div class="tblwrap"><caption><b>Table 4.</b> Coarse-graining checks. Sources:
+<i>results/e3_coarse_graining.json</i>, <i>results/e4_hierarchy.json</i>.</caption><table>
+
+<thead><tr><th>Check</th><th class="num">Instances</th><th class="num">Residual</th><th class="num">Ratio range</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Identity (7)</td><td class="num">320</td><td class="num">2.2&times;10<sup>&minus;15</sup></td><td class="num">0.99999999999999&ndash;1.00000000000002</td><td>holds</td></tr>
+<tr><td>Bound (8)</td><td class="num">320</td><td class="num">&mdash;</td><td class="num">&le; 1</td><td>holds</td></tr>
+<tr><td>Sharp case: 8 equal masses, &beta; = 1.5</td><td class="num">1</td><td class="num">&mdash;</td><td class="num">1.000000</td><td>attains ln&nbsp;8/1.5 = 1.3862943611</td></tr>
+<tr><td>Reconstruction of <i>W</i> from masses only</td><td class="num">1</td><td class="num">0.0</td><td class="num">&mdash;</td><td>exact in floating point</td></tr>
+<tr><td>Chain rule (9)</td><td class="num">60</td><td class="num">8.9&times;10<sup>&minus;16</sup></td><td class="num">&mdash;</td><td>holds</td></tr>
+<tr><td>Entropy identity (10)</td><td class="num">60</td><td class="num">1.8&times;10<sup>&minus;15</sup></td><td class="num">&mdash;</td><td>holds</td></tr>
+</tbody>
+</table></div>
+
+<h3>C. The merge procedure</h3>
+
+<p>Theorems 1, 7 and 8 turn into an interface with three numbers: the mass <i>Z</i>,
+the numerator <i>S</i>, and the record count <i>n</i> (the count is not needed for
+merging, but it is needed to interpret and to audit). Merging is addition on the first
+two; the pair is recovered from them. An implementation that stores block scores
+instead can restore exactness with the correction of (7). An implementation that
+stores only values cannot, by Theorem 3.</p>
+
+<pre>Algorithm 2  Exact merge of two pipeline aggregates
+input : (Z1, S1) and (Z2, S2)          # Z = total mass, S = sum of m_i * v_i
+output: (Z, S) with Z = Z1 + Z2 and S = S1 + S2
+1  Z &lt;- Z1 + Z2
+2  S &lt;- S1 + S2
+3  V &lt;- S / Z                          # fused value, exact
+4  W &lt;- log(Z) / beta                  # score, exact
+5  if only (W1, V1) and (W2, V2) are available then
+6      Z1 &lt;- exp(beta * W1); Z2 &lt;- exp(beta * W2)     # exact, masses were carried
+7      V &lt;- (Z1 * V1 + Z2 * V2) / (Z1 + Z2)
+8      W &lt;- log(Z1 + Z2) / beta
+9      assert |V - exact| &lt;= tolerance    # otherwise see Theorems 3-5
+10 return (Z, S)</pre>
+
+<p>Line 5 is the interesting one: a summary that carries its own mass can be merged
+exactly, and a summary that carries only a value cannot be merged at all without an
+assumption. That asymmetry is the interface form of Theorem 1(v) and the quantitative
+content of Section IV.</p>
+
+<h2>VII. Certified error budgets for estimated weights</h2>
+
+<h3>A. Why a certificate</h3>
+
+<p>In production the scores are not given; they are estimated. The estimate may come
+from a validation set, from a calibrated model, or from finitely many measurements on
+a device. Whoever runs the pipeline then has two numbers: an aggregate computed from
+estimated weights, and a claim about how far that aggregate may be from the true one.
+The claim is the certificate, and without one the aggregate is a point estimate with no
+error bar, which in a regulated setting is worse than useless because it looks like
+knowledge.</p>
+
+<p>There are two ways to produce a certificate. The honest way is to bound the error
+in the weights and propagate it through the two slots. The dishonest way is to divide
+the exponent by &beta; and hope, on the theory that a low temperature cools errors.
+Theorem 9 says the second way is not merely dishonest but unnecessary: reading a weight
+vector as a softmax of logits &mdash; which is what the formula invites, since
+<i>w</i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>p</i> &mdash; cannot amplify an
+<i>L</i><sub>1</sub> error at all.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 9 (no amplification by the logit parametrisation).</span></p>
+<div class="body">
+<p>Let <i>p</i> be a probability vector with strictly positive entries, let
+<i>w</i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>p</i>, and let <i>p&#770;</i> be a
+non-negative estimate with <i>L</i><sub>1</sub> error
+&epsilon; = &Vert;<i>p&#770;</i>&minus;<i>p</i>&Vert;<sub>1</sub> &lt; 1. Set
+<i>w&#770;</i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>p&#770;</i>, after the
+non-negative smoothing needed to keep the logarithm finite, and let <i>q</i> =
+softmax(&beta;<i>w&#770;</i>). Then <i>q</i> = <i>p&#770;</i>/&Vert;<i>p&#770;</i>&Vert;<sub>1</sub>
+and</p>
+<div class="eq">
+TV(q, p) &le; &epsilon;/(1 &minus; &epsilon;).
+<span class="num">(11)</span>
+</div>
+<p>In particular the logit step is a renormalisation and carries no exponential
+amplification.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> softmax(&beta;&middot;&beta;<sup>&minus;1</sup>ln&nbsp;<i>p&#770;</i>)
+= softmax(ln&nbsp;<i>p&#770;</i>) = <i>p&#770;</i>/&sum;<sub><i>i</i></sub><i>p&#770;<sub>i</sub></i>,
+the first claim. Write <i>S</i> = &sum;<sub><i>i</i></sub><i>p&#770;<sub>i</sub></i> = 1
++ &delta; with |&delta;| &le; &epsilon;. For each coordinate,
+<i>q<sub>i</sub></i>&minus;<i>p<sub>i</sub></i> =
+(<i>p&#770;<sub>i</sub></i>&minus;<i>p<sub>i</sub></i>&minus;&delta;<i>p<sub>i</sub></i>)/<i>S</i>,
+so &sum;<sub><i>i</i></sub>|<i>q<sub>i</sub></i>&minus;<i>p<sub>i</sub></i>| &le;
+(&epsilon;+|&delta;|)/<i>S</i> &le; 2&epsilon;/(1&minus;&epsilon;), and total variation is
+half of that. &#9633;</p>
+
+<p>The bound is useful and honest about its limits: at &epsilon; = 0.1 it gives 0.111,
+at &epsilon; = 0.5 it gives 1, and beyond it exceeds 1 and becomes vacuous. Experiment
+E9 confirms that it is valid and slack: over 600 random cases at four error levels the
+realised total variation never came within 0.0197 of the bound, which is what one
+expects, since the bound pays for the worst-case alignment of the perturbation with the
+coordinate signs.</p>
+
+<h3>B. Composing the stages</h3>
+
+<p>A realistic pipeline has at least three error sources: the weights are estimated
+from finitely many samples, some records are discarded for cost, and the score is
+evaluated block-wise. Theorem 10 composes the first two with the diameter of the value
+vector; Section VI already handles the third.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 10 (composition of sampling and truncation).</span></p>
+<div class="body">
+<p>Let <i>D</i> = max<sub><i>i</i>,<i>j</i></sub>&Vert;<i>v<sub>i</sub></i>&minus;<i>v<sub>j</sub></i>&Vert;
+let <i>p&#770;</i> be an estimate with
+&epsilon; = &Vert;<i>p&#770;</i>&minus;<i>p</i>&Vert;<sub>1</sub> &lt; 1; and let
+<i>K</i> be the retained set with estimated retained mass 1&minus;&tau;&#770;. Then the
+pipeline value <i>V&#770;</i> computed from <i>p&#770;</i> restricted to <i>K</i>
+satisfies</p>
+<div class="eq">
+&Vert;V&#770; &minus; V&Vert; &le; D &middot; min( 1, &tau;&#770; +
+&epsilon;/(1&minus;&epsilon;) ).
+<span class="num">(12)</span>
+</div>
+</div>
+</div>
+
+<p><i>Proof.</i> Split the error into truncation of the true weights and perturbation
+of the retained ones. Dropping mass &tau; from a convex combination moves the result by
+at most <i>D</i>&tau;; a perturbation of the retained weights of total variation <i>t</i>
+moves it by at most <i>Dt</i>; Theorem 9 bounds <i>t</i> by
+&epsilon;/(1&minus;&epsilon;); and the sum is capped at 1 because the value lies in a set
+of diameter <i>D</i>. Appendix A.8 gives the details, including the case in which the
+retained set is chosen from the estimate rather than from the truth. &#9633;</p>
+
+<p>Theorem 10 is the statement I would defend hardest in an engineering review, because
+it lets a pipeline publish a number instead of a hope. It also has an honest failure
+mode which the experiment found and which I report rather than hide: when the sample
+size is small and &beta; is large, the estimate &epsilon; approaches 1, the bound
+saturates, and the certificate says nothing. At &beta; = 3 with ten shots the mean
+certificate was 1.63 &mdash; larger than the largest possible value error &mdash; while
+the measured error was 0.10. A saturated certificate is not a false statement; it is a
+statement that the experiment was not informative enough to support one. The practical
+rule is to compute the certificate before the experiment (Algorithm 3) and to raise the
+shot count until it is worth reporting.</p>
+
+<figure>
+<img src="figures/fig5_sampling.svg" alt="error and certificate against shot count"/>
+<figcaption><b>Figure 5.</b> Measured absolute error in the fused value (filled
+markers, solid lines) and the certified bound of Theorem 10 (open markers, other line
+styles) against the number of shots, for eight records and two temperatures. Both axes
+are logarithmic; 120 replications per point. The error falls as the inverse square root
+of the shot count, as sampling theory predicts, and the certificate never crosses below
+it. At ten shots and &beta; = 3 the certificate is clamped and carries no information.
+Source: <i>results/e7_sampling.json</i>.</figcaption>
+</figure>
+
+<div class="tblwrap"><caption><b>Table 5.</b> Sampling experiment. Each row aggregates 120 replications of a
+fixed eight-record instance. The last column is the realised coverage of a 95%
+non-parametric bootstrap interval for the fused value, 200 resamples per replication.
+Source: <i>results/e7_sampling.json</i>.</caption><table>
+
+<thead><tr><th class="num">&beta;</th><th class="num">Shots</th><th class="num">Mean error</th><th class="num">95th pct.</th><th class="num">Mean cert.</th><th class="num">Coverage</th></tr></thead>
+<tbody>
+<tr><td class="num">1.0</td><td class="num">10</td><td class="num">0.0865</td><td class="num">0.2111</td><td class="num">1.3689</td><td class="num">0.958</td></tr>
+<tr><td class="num">1.0</td><td class="num">100</td><td class="num">0.0391</td><td class="num">0.0967</td><td class="num">0.3763</td><td class="num">0.892</td></tr>
+<tr><td class="num">1.0</td><td class="num">1 000</td><td class="num">0.0122</td><td class="num">0.0263</td><td class="num">0.0933</td><td class="num">0.967</td></tr>
+<tr><td class="num">1.0</td><td class="num">10 000</td><td class="num">0.0038</td><td class="num">0.0094</td><td class="num">0.0277</td><td class="num">0.967</td></tr>
+<tr><td class="num">3.0</td><td class="num">10</td><td class="num">0.1017</td><td class="num">0.2626</td><td class="num">1.6267</td><td class="num">0.983</td></tr>
+<tr><td class="num">3.0</td><td class="num">100</td><td class="num">0.0485</td><td class="num">0.1088</td><td class="num">0.4030</td><td class="num">0.975</td></tr>
+<tr><td class="num">3.0</td><td class="num">1 000</td><td class="num">0.0166</td><td class="num">0.0378</td><td class="num">0.1138</td><td class="num">0.950</td></tr>
+<tr><td class="num">3.0</td><td class="num">10 000</td><td class="num">0.0060</td><td class="num">0.0153</td><td class="num">0.0362</td><td class="num">0.900</td></tr>
+</tbody>
+</table></div>
+
+<p>The coverage column is the part of Table 5 I would flag first if I were reviewing
+this paper. A nominal 95% interval should cover in about 95% of replications; the
+observed values range from 0.892 to 0.983, and two of eight cells sit at or below 0.90.
+With 120 replications the standard error of a coverage estimate near 0.95 is about
+0.02, so one cell at 0.89 is two standard errors low &mdash; uncomfortable but not
+damning &mdash; while two cells in the same experiment suggest a systematic effect
+rather than noise. The likely cause is that the bootstrap resamples the estimated
+weights but treats the smoothing as if it were data, which biases the interval slightly
+narrow. I have not corrected it, because correcting after seeing the coverage would be
+fitting the protocol to the result; it is recorded as a limitation in Section XII.</p>
+
+<figure>
+<img src="figures/fig6_coverage.svg" alt="bootstrap coverage by cell"/>
+<figcaption><b>Figure 6.</b> Realised bootstrap coverage per cell of Table 5 against
+the nominal 0.95 line (dashed). Unhatched bars are &beta; = 1, hatched bars are
+&beta; = 3. The shortfall at intermediate shot counts is the limitation discussed in
+the text.</figcaption>
+</figure>
+
+<h3>C. The composed certificate</h3>
+
+<p>Combining Theorems 7 and 10 gives the procedure a pipeline should run before
+committing to a configuration: it answers "how many shots and how many retained
+records do I need in order to publish an error bar of size <i>e</i>?" without running
+the experiment.</p>
+
+<pre>Algorithm 3  Plan a certified pipeline
+input : value diameter D, target error e, candidate (shots m, retain top-k)
+output: a certificate, or the instruction to raise m or k
+1  eps_hat &lt;- min(1, E|| p_hat - p ||_1) computed from m and the current p_hat
+2  tau_hat &lt;- estimated discarded mass for the chosen k
+3  bound &lt;- D * min(1, tau_hat + eps_hat / (1 - eps_hat))
+4  if bound &gt; e then
+5      report which of the two terms dominates; raise m or raise k
+6  else
+7      run the pipeline and publish bound alongside the value</pre>
+
+<p>On 300 random instances the composed bound held in every case, with a median ratio
+of measured error to bound of 0.056 and a maximum of 0.308
+(<i>results/e10_pipeline.json</i>). A median slack of a factor of eighteen is the price
+of a worst-case argument, and I state it plainly: the certificate is a guarantee, not an
+estimate, and a practitioner who wants a tight number should pair it with the bootstrap
+of Table 5 and publish both.</p>
+
+<h2>VIII. The quantum interface</h2>
+
+<h3>A. The question, stated so that it can be answered</h3>
+
+<p>A weight vector is a probability distribution, and a probability distribution is
+the diagonal of a density matrix. The temptation is to read the fusion formula as a
+quantum statement and to speak of amplitudes, superpositions and speed-ups. That
+reading has to be resisted or made precise, and there are three ways to make it
+precise. Either (a) the construction applies to quantum objects as well as classical
+ones; or (b) the weights are <i>estimated from</i> quantum measurements, and the
+formula itself is classical throughout; or (c) the connection is a metaphor. The third
+needs no mathematics. The second is the reading I develop, because it is well posed,
+it has content, and it produces the certificates of Section VII. The first is the
+interesting one, and the answer is a one-directional theorem with a counterexample at
+the other end.</p>
+
+<h3>B. The commuting case, which is exact</h3>
+
+<p>Let <i>p</i> be a weight vector and consider the diagonal state
+&rho; = diag(<i>p</i>). For two such states the trace distance reduces to total
+variation, the von Neumann entropy reduces to the Shannon entropy, and the Helstrom
+error reduces to a statement about score ranges. All three facts are elementary and
+all three are the hinge of what follows.</p>
+
+<p><span class="t">Lemma 2 (diagonal states).</span> For probability vectors
+<i>p</i>, <i>q</i>: &frac12;&Vert;&rho;&minus;&sigma;&Vert;<sub>1</sub> =
+&frac12;&Vert;<i>p</i>&minus;<i>q</i>&Vert;<sub>1</sub> = TV(<i>p</i>,<i>q</i>); the
+von Neumann entropy of &rho; equals the Shannon entropy of <i>p</i>; and the minimum
+error probability in distinguishing &rho; from &sigma; with equal priors is
+(1&minus;TV)/2.</p>
+
+<p><i>Proof.</i> The difference of two diagonal matrices is diagonal, so its singular
+values are the moduli of its diagonal entries, giving the distance identity; the
+entropy claim is the definition evaluated on the spectrum; and the Helstrom expression
+for two states with equal priors is (1&minus;&frac12;&Vert;&rho;&minus;&sigma;&Vert;<sub>1</sub>)/2
+[5]. Appendix A.9 collects the details and the standard citations. &#9633;</p>
+
+<p>Lemma 2 licenses a precise statement about the classical theory: everything in
+Sections III to VII is the commuting special case of a quantum statement. That is a
+compliment rather than a diminishment, and it tells the implementer what the weights
+<i>are</i> in quantum language &mdash; the diagonal of a density matrix.</p>
+
+<h3>C. The bound that survives</h3>
+
+<div class="thm">
+<p><span class="t">Theorem 11 (dephasing is a contraction).</span></p>
+<div class="body">
+<p>Let &Delta; denote complete dephasing in the computational basis,
+&Delta;(&rho;) = diag(&rho;). For density matrices &rho;, &sigma; of the same
+dimension,</p>
+<div class="eq">
+TV(&Delta;(&rho;), &Delta;(&sigma;)) &le; TV(&rho;, &sigma;).
+<span class="num">(13)</span>
+</div>
+<p>Consequently a classical computation on the diagonals is a <i>lower bound</i>: it
+can understate how distinguishable two states are, never overstate it.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> &Delta; is the pinching with respect to the computational-basis
+projection family. A pinching is trace-preserving and completely positive, and it does
+not increase the trace norm: &Vert;&Delta;(<i>X</i>)&Vert;<sub>1</sub> &le;
+&Vert;<i>X</i>&Vert;<sub>1</sub> for every trace-class <i>X</i> [6, 4]. Applying this
+to <i>X</i> = &rho;&minus;&sigma; and halving gives (13). &#9633;</p>
+
+<p>Theorem 11 is the honest form of a quantum claim about this construction. If the
+weights are measured from a quantum state, every number the classical pipeline computes
+is a lower bound on the corresponding quantum distinguishability: the pipeline may say
+two states are close when a measurement could tell them apart, and never the reverse.
+For a decision system that is the right direction of error, because it means the
+classical summary is conservative with respect to the quantum information it
+discards.</p>
+
+<figure>
+<img src="figures/fig7_trace_distance.svg" alt="diagonal against full trace distance"/>
+<figcaption><b>Figure 7.</b> Trace distance of the dephased states (horizontal) against
+trace distance of the full states (vertical), over 250 random pairs of density matrices
+of dimension up to five. Every point lies on or above the identity line, which is
+Theorem 11; the vertical distance to the line is the contribution of coherence, and it
+is large &mdash; here the mean coherence contribution is 0.314 against a mean diagonal
+component of 0.248. Coherence is not a rounding error in the distinguishability budget.
+Source: <i>results/e11_dephasing.json</i>.</figcaption>
+</figure>
+
+<h3>D. The bound that does not survive, and why</h3>
+
+<p>The natural next hope is a converse: that the diagonal determines the distance, so
+that the classical computation is not only a lower bound but a sufficient statistic. It
+is false, and two lines settle it.</p>
+
+<div class="thm">
+<p><span class="t">Theorem 12 (no converse).</span></p>
+<div class="body">
+<p>There exist orthogonal pure states &rho; &ne; &sigma; with
+&Delta;(&rho;) = &Delta;(&sigma;). Hence TV(&Delta;(&rho;),&Delta;(&sigma;)) = 0 while
+TV(&rho;,&sigma;) = 1, and no function of the diagonals can certify a distance between
+coherent states.</p>
+</div>
+</div>
+
+<p><i>Proof.</i> Take |&psi;&rang; = &frac12;(1,1,1,1)<sup>&#8868;</sup> and
+|&phi;&rang; = &frac12;(1,1,&minus;1,&minus;1)<sup>&#8868;</sup>. Both have diagonal
+entries &frac14;, so the dephased states coincide, while
+&lang;&psi;|&phi;&rang; = 0, so the pure states are orthogonal and their trace distance
+is 1. Appendix A.10 verifies the same statement numerically in double precision.
+&#9633;</p>
+
+<p>The experiment adds something more useful than the counterexample alone: over 200
+random pairs of pure states with equal diagonals, all 200 had non-zero trace distance,
+with mean 0.749 and maximum 0.998 (<i>results/e5_quantum_boundary.json</i>). The gap is
+not a measure-zero pathology. The same experiment reports a quantitative inequality
+that does survive: for pure states,
+TV<sup>2</sup> &ge; 1 &minus; (&sum;<sub><i>i</i></sub>&radic;(<i>p<sub>i</sub>q<sub>i</sub></i>))<sup>2</sup>,
+where <i>p</i>, <i>q</i> are the diagonals; the minimum excess over 200 random pairs
+was 8.6&times;10<sup>&minus;5</sup>. The diagonal quantity is the fidelity of the
+dephased states, which upper-bounds the fidelity of the states themselves, and that is
+the reason the inequality points the way it does.</p>
+
+<h3>E. A floor on the error probability</h3>
+
+<p>For the decision-theoretic reading of a pipeline the quantity of interest is not the
+distance but the error probability of a test. For weights obtained from scores
+differing by a vector of range &Delta;, the companion report established
+TV &le; tanh(|&beta;|&Delta;/4) [1]; the sharp form of that bound via the Hilbert metric
+is due to Cohen and Fausti [10] and is used in the same form by Somasundaram et al.
+[11]. Composing it with Lemma 2 gives a floor.</p>
+
+<p><span class="t">Corollary 1 (Helstrom floor).</span> Let two diagonal states have
+weights obtained from scores differing by a vector of range &Delta;. Then the minimum
+error probability of distinguishing them with equal priors satisfies</p>
+
+<div class="eq">
+P<sub>e</sub> &ge; (1 &minus; tanh(|&beta;|&Delta;/4))/2.
+<span class="num">(14)</span>
+</div>
+
+<p>Figure 8 plots the floor for four temperatures, and
+<i>results/e6_helstrom.json</i> reports 400 random cases in which the measured Helstrom
+error never fell below it: the smallest slack was 1.2&times;10<sup>&minus;5</sup> and the
+mean slack rose with &beta; from 0.040 at &beta; = 0.5 to 0.235 at &beta; = 8. The mean
+slack is worth a remark: the floor is loose precisely where the pipeline is sharp, which
+is the regime a practitioner cares about. A loose bound is still a bound, but (14)
+should not be mistaken for an estimate.</p>
+
+<figure>
+<img src="figures/fig8_helstrom.svg" alt="Helstrom floor curves"/>
+<figcaption><b>Figure 8.</b> The lower bound (14) on the error probability of
+distinguishing two diagonal states whose scores differ by a vector of range &Delta;, for
+four values of &beta;. The bound decays with the range and rises with &beta;; it is
+never tight, and its value is that it forbids any claim of distinguishability below the
+curve.</figcaption>
+</figure>
+
+<h3>F. What the quantum reading delivers, and what it does not</h3>
+
+<p>Four sentences, written plainly rather than left to inference. A Gibbs weight vector
+is the diagonal of a density matrix, and in that reading the whole classical theory is
+the commuting special case. If a device prepares states whose diagonals are the weights,
+estimating those weights by measurement is a well-posed statistical problem and
+Theorem 10 applies with the shot count equal to the number of measurements. Coherence
+adds distinguishability that the diagonal cannot see, in one direction only, so a
+classical pipeline built on weights is conservative. And nothing in this section implies
+that a quantum device computes the fusion faster, or that the formula is a quantum
+algorithm: the formula has no amplitudes, no unitaries and no interference, and calling
+it a quantum algorithm would be a claim its own mathematics contradicts.</p>
+
+<p>One constructive consequence is worth naming. Because the weights are a diagonal, the
+preparation problem is a state-preparation problem of a specific and well-studied shape:
+produce a state whose computational-basis distribution is the Gibbs distribution of the
+scores. The certificate then does double duty, bounding the error induced by finite
+measurements regardless of how the state was produced, which means a pipeline can accept
+weights from a quantum device, a classical sampler, or a validation set and treat them
+identically. That interchangeability is the only sense in which I am willing to attach
+the word quantum to this mathematics, and it is a smaller claim than the word usually
+carries.</p>
+
+<h2>IX. Prior art and a conservative novelty assessment</h2>
+
+<h3>A. Method of assessment</h3>
+
+<p>For each statement I ask two questions: is the mathematical content already in the
+literature, and if so where; and is the specific form used here already published. A
+statement is called <i>classical</i> if content and form are both in the literature,
+<i>repackaged</i> if the content is classical but the operational form is not one I can
+find, and <i>new</i> only if I can point to a proof and say what would falsify the claim
+of novelty. Under that discipline one claim is offered as new &mdash; Theorem 3 together with
+the sharp constant of Theorem 4 &mdash; four statements are called repackaged, and the
+rest are classical. The one-page novelty assessment accompanying the deposit repeats this
+table with the falsification conditions written out.</p>
+
+<div class="tblwrap"><caption><b>Table 6.</b> Prior-art assessment. The third column names the nearest source
+I know; the fourth gives the verdict under the discipline described in the text.</caption><table>
+
+<thead><tr><th>Statement</th><th>Content</th><th>Nearest prior art</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>Theorem 1 (ledger)</td><td>additive sufficient statistic; weighted-mean barycentre; log-sum-exp</td><td>exponential families [18]; LSE evaluation [8]</td><td>classical</td></tr>
+<tr><td>Theorem 1(iii) (duplication)</td><td>ln <i>k</i>/&beta; for a <i>k</i>-fold duplicate</td><td>companion report [1, Thm 1], there as a numerical correction</td><td>repackaged: here derived as an algebraic law</td></tr>
+<tr><td>Lemma 1 (no bilinearity)</td><td>elementary counterexample</td><td>none needed</td><td>classical observation</td></tr>
+<tr><td>Theorem 2 (<i>n</i>-ary form)</td><td>log-sum-exp associativity</td><td>[8], [18], mergeable summaries [16, 17]</td><td>classical</td></tr>
+<tr><td><b>Theorem 3 (reachable set)</b></td><td>value-only summaries leave the convex hull</td><td>mergeability [16, 17]; communication lower bounds [19]</td><td><b>offered as new</b></td></tr>
+<tr><td><b>Theorem 4 (sharp constant)</b></td><td>minimax radius = Chebyshev radius; midpoint in one dimension</td><td>standard minimax reasoning; no source found for this operator</td><td><b>offered as new</b> (constant sharp)</td></tr>
+<tr><td><b>Theorem 5 (quantised ledger)</b></td><td><i>D</i>&delta;/(1&minus;&delta;) independent of the number of blocks</td><td>quantised averaging bounds, which are not directly applicable here</td><td>repackaged with a new constant</td></tr>
+<tr><td>Theorem 6 (temperature)</td><td>fluctuation&ndash;dissipation; convexity; cumulants</td><td>statistical mechanics; convex analysis [3, 7]</td><td>classical</td></tr>
+<tr><td>Theorem 7 (gap identity)</td><td>Gibbs variational principle; entropy bound</td><td>[2, ch. 2, 12]</td><td>content classical; <b>form repackaged</b></td></tr>
+<tr><td>Theorem 8 (chain rule)</td><td>Shannon chain rule</td><td>[2, ch. 2]</td><td>classical</td></tr>
+<tr><td>Theorem 9 (no amplification)</td><td><i>L</i><sub>1</sub> to total variation via renormalisation</td><td>folklore; Hilbert-metric sharp bound [10, 11]</td><td>classical</td></tr>
+<tr><td>Theorem 10 (composition)</td><td>convexity plus triangle inequality</td><td>truncation analyses [12, 14]</td><td>classical</td></tr>
+<tr><td>Theorem 11 (dephasing)</td><td>pinching inequality</td><td>[6, 4]</td><td>classical</td></tr>
+<tr><td>Theorem 12 (no converse)</td><td>orthogonal pure states with equal diagonals</td><td>elementary; known in state discrimination</td><td>classical</td></tr>
+<tr><td>Corollary 1 (Helstrom floor)</td><td>composition of a TV bound with Helstrom</td><td>[1, 5, 10]</td><td>repackaged composition</td></tr>
+</tbody>
+</table></div>
+
+<h3>B. The claim I will defend, and the ones I will not</h3>
+
+<p>The claim is Theorem 3 with Theorem 4 and Theorem 5 attached: <i>for a fusion operator
+that carries a score alongside a value, a summary without the normalising mass leaves the
+merged value undetermined on the convex hull of the shard values; the minimax rule is the
+Chebyshev centre, whose worst-case error is half the range in one dimension and is
+attained; and a ledger quantised to relative precision &delta; merges to within
+<i>D</i>&delta;/(1&minus;&delta;) independently of the number of shards.</i> The style of
+argument is standard minimax theory and the question is a mergeability question in the
+sense of [16]; what I could not find is the statement for this operator with an exact
+constant and an explicit attaining construction. That is a small claim and I make only
+that one.</p>
+
+<p>Three claims I explicitly do <i>not</i> make. I do not claim that the ledger is
+&quot;necessary for distributed fusion&quot; in any general sense: it is necessary for
+exactness given a value-only summary, and a system may legitimately accept the error bar
+of Theorem 4 instead. I do not claim the constants in Theorem 5 are optimal; the measured
+worst case was a factor of three below the bound. And I do not claim priority: the
+argument is old enough that it has probably been written down somewhere in the sketches
+literature, and a reader who knows such a reference should treat this paragraph as an
+invitation to send it.</p>
+
+<h3>C. What would falsify each claim</h3>
+
+<p>For Theorem 3: a dataset whose global value lies outside the hull of the reported
+block values, which would contradict the convexity of the weights. For Theorem 4: a merge
+rule with worst-case error below half the range on a family of instances, or an instance
+where the midpoint's worst case exceeds half the range. For Theorem 5: a rounding pattern
+whose induced error exceeds <i>D</i>&delta;/(1&minus;&delta;). For Theorem 7: a negative
+gap at &beta; &gt; 0, or a gap above &beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i>. For
+Theorem 9: an estimate with &epsilon; &lt; 1 whose renormalised total variation exceeds
+&epsilon;/(1&minus;&epsilon;). For Theorem 11: a pair of states whose dephasing increases
+the trace distance, which would contradict a standard theorem and would more likely
+indicate a bug in my code. The experiments search for exactly these failures and report
+none; the negative results that did appear are in Section XII.</p>
+
+<h2>X. Experiments and results</h2>
+
+<h3>A. What counts as evidence here</h3>
+
+<p>The experiments are of one kind: a stated mathematical property is evaluated on
+randomly generated instances and the deviation of the computed quantity from the predicted
+one is recorded. That is a check of an identity or a bound against floating-point reality,
+not an empirical study of a phenomenon, and the difference matters for how the results
+should be read. A deviation of 10<sup>&minus;16</sup> does not corroborate Theorem 7 the
+way a measurement corroborates a physical theory; it shows that the theorem has been
+implemented without algebra errors and that no step of it depends on a cancellation double
+precision cannot survive. Where a claim is genuinely empirical &mdash; the bootstrap
+coverage of Table 5, for instance &mdash; the experiment uses replication, reports
+dispersion, and is described in different language.</p>
+
+<p>Three protocol decisions apply throughout. The pseudo-random generator is seeded per
+experiment with a fixed offset from a master seed (2026110101), so the whole result set is
+reproduced by one command. No wall-clock timing appears in the scientific outputs: a timing
+measurement on a shared machine is not reproducible in the sense this paper needs, and
+quoting one would invite a reading of &quot;faster&quot; that the work does not support.
+Each experiment writes its own JSON file with the property it checks, the instance counts,
+the residuals and a boolean verdict, so the verifier can read verdicts rather than
+re-derive them from prose.</p>
+
+<h3>B. The experiment set</h3>
+
+<div class="tblwrap"><caption><b>Table 7.</b> The sixteen experiments, with the property each tests, its
+instance count and its verdict. File names are those of the JSON outputs in
+<i>results/</i>; the verifier re-derives every verdict independently where possible.</caption><table>
+
+<thead><tr><th>Id</th><th>Property</th><th class="num">Instances</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>E1</td><td>softmax is exactly invertible on the positive simplex</td><td class="num">400</td><td>holds, max error 2.2&times;10<sup>&minus;16</sup></td></tr>
+<tr><td>E2</td><td>temperature identities of Theorem 6 and the shape of the sensitivity</td><td class="num">600 &times; 3</td><td>holds, max error 8.5&times;10<sup>&minus;7</sup>; monotone and peaked cases both reproduced</td></tr>
+<tr><td>E3</td><td>coarse-graining identity, bound and sharpness</td><td class="num">320</td><td>holds, residual 2.2&times;10<sup>&minus;15</sup></td></tr>
+<tr><td>E4</td><td>chain rule and the singleton-entropy identity</td><td class="num">60</td><td>holds, residual 1.8&times;10<sup>&minus;15</sup></td></tr>
+<tr><td>E5</td><td>commuting bound and the coherent counterexample</td><td class="num">300 + 200</td><td>holds; counterexample confirmed</td></tr>
+<tr><td>E6</td><td>Helstrom floor for score perturbations</td><td class="num">400</td><td>holds, 0 violations</td></tr>
+<tr><td>E7</td><td>finite-shot error, certificate and bootstrap coverage</td><td class="num">8 &times; 120</td><td>certificate holds; coverage 0.892&ndash;0.983</td></tr>
+<tr><td>E8</td><td>von Neumann entropy equals Shannon entropy on diagonals</td><td class="num">200</td><td>holds, 4.4&times;10<sup>&minus;16</sup></td></tr>
+<tr><td>E9</td><td>logit parametrisation does not amplify <i>L</i><sub>1</sub> error</td><td class="num">600</td><td>holds, 0 violations</td></tr>
+<tr><td>E10</td><td>composed certificate for sampling plus truncation</td><td class="num">300</td><td>holds, 0 violations</td></tr>
+<tr><td>E11</td><td>dephasing contracts the trace distance</td><td class="num">300</td><td>holds, 0 violations</td></tr>
+<tr><td>E12</td><td>reachable set, minimax constant and the same-summary counterexample</td><td class="num">500</td><td>holds; worst case equals half the range to 8.9&times;10<sup>&minus;16</sup></td></tr>
+<tr><td>E13</td><td>algebra of the operation (Theorems 1&ndash;2)</td><td class="num">700+</td><td>commutative and associative; not idempotent; not homogeneous</td></tr>
+<tr><td>E14</td><td>worked example and a finite-difference check</td><td class="num">1</td><td>derivative matches to 3.6&times;10<sup>&minus;7</sup></td></tr>
+<tr><td>E15</td><td>quantised ledger: error against the bound of Theorem 5</td><td class="num">600 + 1</td><td>holds; max ratio of error to bound 0.31</td></tr>
+<tr><td>E16</td><td>tree merging equals <i>n</i>-ary merging up to 10<sup>4</sup> records</td><td class="num">9</td><td>holds, relative gap 3.7&times;10<sup>&minus;16</sup></td></tr>
+</tbody>
+</table></div>
+
+<h3>C. Results that deserve a paragraph</h3>
+
+<p><i>Representability (E1).</i> Any strictly positive distribution on <i>n</i> outcomes is
+the softmax of some score vector, with a maximum reconstruction error of
+2.2&times;10<sup>&minus;16</sup> over 400 instances, including a distribution with a
+10<sup>&minus;6</sup> entry and a uniform one. The value is practical: no pipeline need be
+restricted to the family of distributions a given score model can express, because if a
+target distribution is available the scores reproducing it exist in closed form,
+<i>w</i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>p</i>.</p>
+
+<p><i>Algebra (E13).</i> Commutativity holds to 5.6&times;10<sup>&minus;16</sup> and
+associativity to 8.9&times;10<sup>&minus;16</sup>; idempotence fails by exactly
+&beta;<sup>&minus;1</sup>ln&nbsp;2 with a residual of at most 2.8&times;10<sup>&minus;17</sup>
+across three temperatures; homogeneity fails by 2.1932 at &lambda; = 2, which is the fact
+that removes the inner-product reading.</p>
+
+<p><i>Impossibility (E12).</i> Over 200 random datasets every value reached by random
+admissible masses lay inside the hull (fraction 1.000, maximum violation
+&minus;6.4&times;10<sup>&minus;8</sup> in the direction that is inside), and over 300
+instances the minimax rule's realised worst case equalled half the range to
+8.9&times;10<sup>&minus;16</sup>. Equal weighting was never better than the minimax rule,
+with a ratio of worst cases between 1.000 and 1.463 and a mean of 1.128.</p>
+
+<p><i>Dephasing (E11).</i> Over 300 random pairs the mean full trace distance was 0.562,
+of which 0.248 was visible in the diagonals and 0.314 came from coherence; the minimum
+slack was 0.009, so there were cases in which coherence added almost nothing, and none in
+which it subtracted. This is the profile of a contraction that is sometimes an isometry,
+which is what Theorem 11 claims and no more.</p>
+
+<p><i>Sampling (E7).</i> Coverage of the bootstrap interval, computed by resampling
+[13] and reported per cell rather than pooled, ranged from 0.892 to 0.983 against a
+nominal 0.95: six of eight cells were at or above nominal and two were about two standard
+errors low. The certificate, by contrast, held in every cell, with the mean bound 1.6267
+against a mean realised error of 0.1017 at &beta; = 3 and ten shots, which is the
+saturation reported in Section XII. The concentration background that makes the
+certificate work in the non-saturated regime is the <i>L</i><sub>1</sub> deviation
+literature [14].</p>
+
+<p><i>Tree merging (E16).</i> Nine configurations spanning 10<sup>2</sup> to
+10<sup>4</sup> records and block sizes of 1, 10 and 100 produce tree-merged aggregates
+equal to the <i>n</i>-ary aggregate with a maximum relative value gap of
+3.7&times;10<sup>&minus;16</sup> and a maximum score gap of exactly zero. The engineering
+reading is that sharding is free: any tree, any block size, no loss.</p>
+
+<h2>XI. Engineering implications</h2>
+
+<h3>A. What a system should carry</h3>
+
+<p>The theorem of Section IV converts into a design rule that is cheap to state. A
+shard that reports a fused value must also report the mass it normalised by, and the
+pair must be sufficient statistics of the aggregate: the partition sum <i>Z</i>
+together with the mass-weighted sum
+<i>S</i> = &sum;<sub><i>i</i></sub><i>e</i><sup>&beta;<i>w<sub>i</sub></i></sup><i>v<sub>i</sub></i>,
+or equivalently the pair (ln&nbsp;<i>Z</i>, <i>V</i>), since the two forms are related
+by a division and a logarithm. A
+shard that reports only a value is not merging; it is approximating, and Section IV
+gives the size of the approximation error. The cost of the extra number is one float
+per shard, and the benefit is that the merge is exact rather than bounded.</p>
+
+<p>Three implementation details, each of which I have seen go wrong. The merge must be
+done in the log domain with a shift by the running maximum, or overflow defeats the
+purpose of carrying a log-mass at all [8]; the streaming form of the running partition
+sum removes the two-pass requirement [9]. The score must be accumulated in a type wide
+enough for the record count &mdash; at 10<sup>9</sup> records and scores of order one,
+float32 loses the low bits of the sum, and Theorem 9 gives the exact exchange rate
+between that loss and the error in the weights. And the value must be summed in the
+same pass as the weights, because the identity that makes the pair a sufficient
+statistic assumes both are taken over the same record set; a shard that filters records
+between the two passes silently produces a pair that no mass correction can repair.</p>
+
+<h3>B. Choosing between the ledger and the impossibility theorem</h3>
+
+<p>The two results in Section IV point in opposite directions and a practitioner has to
+choose. If shards can be changed, carry the mass: error zero, one extra float, no
+statistics needed. If shards cannot be changed &mdash; a legacy export, a third-party
+model, a logging format nobody will alter &mdash; then the value-only merge is what is
+available, and the honest report is an interval of width equal to the range of the shard
+values, with the midpoint as the point estimate. Reporting a single number in that
+situation with a confidence interval computed as though the merge were exact is the
+failure mode Theorem 4 forbids, and it is a common one.</p>
+
+<p>There is a middle option worth naming because it is often available in practice. If
+each shard can report one extra scalar in addition to its value &mdash; not the mass
+itself but a coarse summary of it, such as a bucket index on a logarithmic scale &mdash;
+then Theorem 5 applies with &delta; equal to the bucket width, and the merge error
+becomes <i>D</i>&delta;/(1&minus;&delta;) regardless of shard count. The measured worst
+case in E15 was a factor of three inside the bound, which suggests that eight to sixteen
+logarithmic buckets are enough for four-digit accuracy in the merged value; that is an
+engineering statement from one experiment and not a theorem.</p>
+
+<h3>C. Where the certificates belong in a pipeline</h3>
+
+<p>A certificate that is computed after deployment and stored in a log is decoration. The
+placement that matters is before the merge, in the sense that the shot count should be
+chosen from the target error rather than the error reported from the shot count. That is
+the inversion Algorithm 3 performs: given a target &tau; and a truncation bound, solve for
+the number of samples and the bucket count that make the composed bound (11) fall below
+&tau;. In the worked numbers of Section VII that inversion costs a few hundred samples for
+a percent-level target at moderate &beta;, which is small compared to the cost of the
+records being summarised. The exception is the regime the limitation section names: at
+high &beta; the bound saturates and no sample count rescues it, because the probability
+of drawing the dominant record at all is what the bound is measuring.</p>
+
+<h2>XII. Limitations</h2>
+
+<p>Nine limitations, in the order in which they would trouble a reader who wanted to use
+this work.</p>
+
+<ol>
+<li><b>The certificate saturates.</b> At high &beta; and few samples, &epsilon;
+approaches one and (11) says nothing; the measured certificate at &beta; = 3 with ten
+shots was 1.63, larger than any achievable error. A saturating bound is honest and
+useless in equal measure, and the remedy is planning rather than reporting: fix the shot
+count from the target error before deployment, as Algorithm 3 does.</li>
+
+<li><b>Bootstrap coverage is below nominal.</b> In two of eight cells the interval
+covered 0.892 and 0.900 against a nominal 0.95, which is about two standard errors low at
+120 replications. The likely cause is that the smoothing is computed from the same
+finite sample it is meant to describe, and I have deliberately not repaired it after
+seeing the numbers; the table in Section VII reports the under-coverage as found.</li>
+
+<li><b>The quantisation bound is not attained, and I do not know the sharp constant.</b>
+The worst ratio of realised error to the bound of Theorem 5 was 0.31 across 600
+instances. Either the bound is loose by a factor of about three or the adversarial
+rounding pattern that attains it is rare; I cannot distinguish these from the evidence
+here.</li>
+
+<li><b>&beta; is treated as known.</b> Every certificate is conditional on the
+temperature. Composing them with an estimated &beta; would need a Lipschitz constant for
+the aggregate in &beta;, which Theorem 6 supplies locally but which I do not develop into
+a uniform certificate.</li>
+
+<li><b>The Helstrom floor is loose.</b> Its mean slack grows with &beta;, reaching 0.235
+at &beta; = 8, so it is a prohibition rather than an estimate. Anyone wanting a tight
+error probability should compute it directly rather than read it off the figure.</li>
+
+<li><b>Small instances.</b> Dimensions up to forty in the coarse-graining experiments and
+up to eight levels in the quantum ones. The theorems are dimension-free, but
+floating-point behaviour at scale &mdash; long sums over many shards, catastrophic
+cancellation in the value accumulator &mdash; is exercised only modestly here.</li>
+
+<li><b>No hardware, no hardware claim.</b> Every quantum-adjacent result is computed on
+simulated states. The word quantum in this paper refers to the mathematics of density
+matrices, and to nothing that was measured.</li>
+
+<li><b>The prior-art claim is hedged, on purpose.</b> Theorem 3 is offered as new
+because I could not find it in the mergeability and communication-constrained literature,
+not because I searched exhaustively. A reader who knows a counterexample to the novelty
+claim has a one-line refutation and should apply it.</li>
+
+<li><b>Verification is not replication.</b> The independent verifier re-derives the
+reported numbers from the stored outputs with code that does not import the library. That
+establishes freedom from algebra slips and determinism on this machine; it does not
+establish that an unrelated implementation would agree, which is what replication means
+and what this deposit cannot supply by itself.</li>
+</ol>
+
+<h2>XIII. Reproducibility</h2>
+
+<h3>A. The claim being made</h3>
+
+<p>The claim is narrower than the word reproducibility usually carries, so it is worth
+stating exactly. Everything in this paper is regenerated from source by three commands,
+on any machine with NumPy [15] and Matplotlib, with no network access, no data download
+and no random seed taken from the clock. That establishes bit-level determinism of the
+result set. It does not establish that an independent implementation of the same
+mathematics would produce the same numbers to the last digit, and it does not establish
+the correctness of the theorems; the proofs do that, and the verifier supports them by
+testing the identities numerically with independent code.</p>
+
+<h3>B. Procedure</h3>
+
+<p>From the repository root: <span class="code">python experiments/otaz_run_quantum.py</span>
+regenerates all nineteen JSON files in <i>results/</i> from the master seed 2026110101;
+<span class="code">python -m pytest tests</span> runs the fifty-two tests; and
+<span class="code">python scripts/otaz_verify_quantum.py</span> performs the fifty-six
+independent checks and writes a verdict. A fourth command,
+<span class="code">python scripts/otaz_checksums.py</span>, writes and verifies the SHA-256
+manifest of every shipped file, which catches the failure mode that matters in practice:
+a file edited after the results were produced.</p>
+
+<p>Two failure modes have been observed in this repository and are worth warning about.
+The experiment script records the SHA-256 of each library module it imports, so editing
+<i>core.py</i> without re-running the experiments leaves the recorded hashes stale; the
+verifier fails loudly in that case, which is the intended behaviour. And the manuscript
+and the figures are built from the stored results rather than recomputed at build time,
+so a rebuild is only meaningful after the experiments have run.</p>
+
+<h3>C. What is stored</h3>
+
+<p>Each of the nineteen JSON files records the property under test, the instance counts,
+the residuals, the worst-case values and a boolean verdict, in the units the theorem uses.
+Nothing is stored as an image of a plot alone; every figure in this paper is drawn from
+the same JSON that the tables cite, so a reader who distrusts a figure can recover the
+numbers behind it. Appendix B lists the scalars quoted in the text and the file each came
+from.</p>
+
+<h2>XIV. Conclusion</h2>
+
+<p>This paper took one formula &mdash; a temperature-scaled softmax over scores,
+normalising a weighted average of values &mdash; and asked what it does algebraically,
+what it costs numerically, what it cannot do, and what can be certified about it. The
+answer to the first is that it is a Gibbs average with an additive sufficient statistic,
+which means it is a monoid and can be merged in any tree, and that it is neither
+idempotent nor homogeneous nor bilinear, with the last defect quantified at 2.1932. The
+answer to the second is a set of exact identities with matching error terms: the
+derivative in temperature is a covariance, the second derivative a variance, the third a
+third cumulant, the coarse-graining gap is an entropy divided by &beta;, and finite
+sampling costs a total-variation distance that cannot be amplified by the logit
+parameterisation.</p>
+
+<p>The answer to the third question is the result I would keep if I could keep only one.
+A fusion operator that carries a score alongside a value needs the normalising mass as
+well, not for numerical convenience but for information: with a value-only summary the
+merged value is undetermined on the convex hull of the shard values, and no amount of
+cleverness recovers it, because the construction is a convex combination and the
+combination's weights are exactly the information that was discarded. The minimax rule
+over that uncertainty is the midpoint, whose error is half the range and is attained, and
+which is never beaten by equal weighting in the instances tested. This is not a theorem
+about a software bug; it is a theorem about the operator, and it converts a silent,
+systematic error into a stated interval.</p>
+
+<p>The answer to the fourth is a short list of certified statements, each with a
+condition of validity that is written down rather than assumed: an error budget for
+sampling and truncation composed into one number, a temperature calculus that tells an
+analyst what changes and by how much when &beta; moves, and a quantum reading in which
+the classical theory is the commuting case and coherence is provably not a rounding
+error. Two of those statements are negative &mdash; the certificate saturates, the
+coverage falls short &mdash; and they are in the paper because a budget that is only
+trusted when it looks good is not a budget.</p>
+
+<p>What remains open is worth naming so the paper does not pretend to completeness. The
+sharp constant in the quantised ledger is not known. The composition of a certificate
+with an estimated temperature is missing. The empirical question of how often real
+aggregation weights fall outside the &delta; for which quantised merging is safe has not
+been measured on production data, only argued from a single published tolerance study.
+And the minimax statement is one-dimensional in its sharp form; the vector-valued version
+is bounded by the diameter but is not sharp, and a practitioner with a vector aggregate
+will want the sharp version. Each of these is a question this paper makes precise rather
+than one it answers.</p>
+
+<p>If there is a single sentence to carry away it is that the mass is not bookkeeping. It
+is the part of the record that makes the fusion invertible, and a system that drops it is
+not summarising the data it processed, only the values it happened to touch. The
+impossibility theorem in Section IV is the formal content of that sentence, and the
+ledger in Section III is the smallest object that satisfies it.</p>
+
+<h2>Appendix A. Proofs</h2>
+
+<p>Proofs are given for the results whose arguments are not a one-line citation. Notation
+is that of Section II: records <i>i</i> = 1,&hellip;,<i>n</i> with scores
+<i>w<sub>i</sub></i>, values <i>v<sub>i</sub></i>, weights
+<i>p<sub>i</sub></i> = <i>e</i><sup>&beta;<i>w<sub>i</sub></i></sup>/<i>Z</i>,
+<i>Z</i> = &sum;<sub><i>i</i></sub><i>e</i><sup>&beta;<i>w<sub>i</sub></i></sup>,
+aggregate value <i>V</i> = &sum;<sub><i>i</i></sub><i>p<sub>i</sub>v<sub>i</sub></i> and
+aggregate score <i>W</i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>Z</i>.</p>
+
+<h3>A.1 Theorem 1 (ii) and (v): the merge laws</h3>
+
+<p><i>(ii).</i> Write <i>S</i> = &sum;<sub><i>i</i></sub><i>e</i><sup>&beta;<i>w<sub>i</sub></i></sup><i>v<sub>i</sub></i>.
+For two disjoint record sets <i>A</i>, <i>B</i> the partition functions and values sums
+add, <i>Z</i><sub><i>A</i>&cup;<i>B</i></sub> = <i>Z<sub>A</sub></i>+<i>Z<sub>B</sub></i>
+and <i>S</i><sub><i>A</i>&cup;<i>B</i></sub> = <i>S<sub>A</sub></i>+<i>S<sub>B</sub></i>,
+because the defining sums are over disjoint index sets. Hence
+<i>V</i><sub><i>A</i>&cup;<i>B</i></sub> = (<i>S<sub>A</sub></i>+<i>S<sub>B</sub></i>)/(<i>Z<sub>A</sub></i>+<i>Z<sub>B</sub></i>),
+which is the weighted mean of <i>V<sub>A</sub></i> and <i>V<sub>B</sub></i> with weights
+<i>Z<sub>A</sub></i>, <i>Z<sub>B</sub></i>. Commutativity and associativity follow because
+addition in the two components is commutative and associative. A formal neutral
+element would be (<i>Z</i>, <i>S</i>) = (0, 0), that is <i>W</i> = &minus;&infin; with
+an empty record set; no non-empty record set attains it, because <i>Z</i> &gt; 0
+whenever a record exists. The structure is therefore a commutative monoid whose identity
+is not an element of the carrier set, and it is not a group. &#9633;</p>
+
+<p><i>(v).</i> Fix a record set and consider the map &beta; &rarr;
+(<i>W</i>, <i>V</i>). By the previous part the pair is additive over disjoint unions and
+determined by <i>n</i> + 2 scalars, so it is a sufficient statistic of fixed dimension in
+the sense of exponential families [18]. The sufficiency is with respect to the family
+obtained by reweighting records by <i>e</i><sup>&beta;<i>w</i></sup>, which is exactly the
+family in which the data enter. &#9633;</p>
+
+<h3>A.2 Theorem 3: the reachable set is the convex hull</h3>
+
+<p>Let there be <i>k</i> blocks with reported pairs (<i>V<sub>j</sub></i>,
+<i>n<sub>j</sub></i>), <i>j</i> = 1,&hellip;,<i>k</i>, and let <i>V</i> be the true global
+aggregate. Because <i>V</i> = &sum;<sub><i>j</i></sub>(<i>Z<sub>j</sub></i>/<i>Z</i>)<i>V<sub>j</sub></i>
+with <i>Z</i> = &sum;<sub><i>j</i></sub><i>Z<sub>j</sub></i> and <i>Z<sub>j</sub></i> &gt; 0,
+every attainable <i>V</i> is a convex combination of the reported values, so the reachable
+set is contained in conv{<i>V<sub>1</sub></i>,&hellip;,<i>V<sub>k</sub></i>}.</p>
+
+<p>For the reverse inclusion let <i>m</i> lie in the relative interior of the simplex and
+put <i>Z<sub>j</sub></i> = <i>m<sub>j</sub>Z</i> for an arbitrary <i>Z</i> &gt; 0. It
+remains to see that masses <i>Z<sub>j</sub></i> with the given <i>V<sub>j</sub></i> are
+realisable by actual records. Take a single record per block with value
+<i>v<sub>j</sub></i> = <i>V<sub>j</sub></i>; its partition function is
+<i>e</i><sup>&beta;<i>w<sub>j</sub></i></sup>, which equals any prescribed positive number
+for the score <i>w<sub>j</sub></i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>Z<sub>j</sub></i>.
+Hence every interior point, and by closure every boundary point, is attainable, and the
+reachable set is the hull. Note that the construction uses one record per block, so the
+undetermination is not a consequence of small blocks; it persists for blocks of any
+size. &#9633;</p>
+
+<p><i>Remark.</i> The argument shows exactly which extra scalar removes the ambiguity: the
+mass <i>Z<sub>j</sub></i>, or any strictly monotone transform of it. Two values plus two
+masses determine the merge; two values alone determine nothing beyond the hull.</p>
+
+<h3>A.3 Theorem 4: the minimax rule is the midpoint, and the constant is sharp</h3>
+
+<p>Write <i>a</i> = min<sub><i>j</i></sub><i>V<sub>j</sub></i> and
+<i>b</i> = max<sub><i>j</i></sub><i>V<sub>j</sub></i>, so the reachable set is
+<i>C</i> = [<i>a</i>, <i>b</i>] by Theorem 3. For an estimate <i>c</i> the worst-case
+absolute error over <i>C</i> is max(<i>b</i>&minus;<i>c</i>, <i>c</i>&minus;<i>a</i>),
+which is minimised when the two terms are equal, that is at <i>c</i> = (<i>a</i>+<i>b</i>)/2,
+where the value is (<i>b</i>&minus;<i>a</i>)/2. This is the Chebyshev centre of an interval
+and the argument is elementary. For sharpness, take the admissible masses
+<i>m</i> = <i>e<sub>j</sub></i> concentrated on the block attaining <i>a</i>, and then on
+the block attaining <i>b</i>: both are attainable by A.2, and at them the error of the
+midpoint equals exactly half the range. Hence no rule does better in the worst case, and
+the midpoint does no worse. &#9633;</p>
+
+<p><i>Remark.</i> In more than one dimension the same argument gives the radius of the
+smallest Euclidean ball containing the hull, which is the Chebyshev radius and is not in
+general attained by a simple formula; the diameter bounds it and is not sharp. This is why
+the theorem is stated for scalar aggregates.</p>
+
+<h3>A.4 Theorem 6: the temperature calculus</h3>
+
+<p>Differentiating ln&nbsp;<i>Z</i> with respect to &beta; gives
+&sum;<sub><i>i</i></sub><i>p<sub>i</sub>w<sub>i</sub></i>, and differentiating again gives
+&sum;<sub><i>i</i></sub><i>p<sub>i</sub>w<sub>i</sub></i><sup>2</sup> &minus;
+(&sum;<sub><i>i</i></sub><i>p<sub>i</sub>w<sub>i</sub></i>)<sup>2</sup>, which is
+Var<sub><i>p</i></sub>(<i>w</i>). The third derivative is the third cumulant of <i>w</i>
+under <i>p</i> by the same computation, since the cumulant generating function of <i>w</i>
+under <i>p</i> is ln&nbsp;&sum;<sub><i>i</i></sub><i>p<sub>i</sub>e</i><sup><i>tw<sub>i</sub></i></sup>
+and its derivatives at zero are the cumulants. For the value, differentiate
+<i>V</i> = &sum;<sub><i>i</i></sub><i>p<sub>i</sub>v<sub>i</sub></i> using
+&part;<i>p<sub>i</sub></i>/&part;&beta; = <i>p<sub>i</sub></i>(<i>w<sub>i</sub></i> &minus;
+&sum;<sub><i>l</i></sub><i>p<sub>l</sub>w<sub>l</sub></i>), which is the score's deviation
+from its mean. Collecting terms gives
+d<i>V</i>/d&beta; = &sum;<sub><i>i</i></sub><i>p<sub>i</sub>v<sub>i</sub>w<sub>i</sub></i>
+&minus; (&sum;<sub><i>i</i></sub><i>p<sub>i</sub>v<sub>i</sub></i>)(&sum;<sub><i>i</i></sub><i>p<sub>i</sub>w<sub>i</sub></i>)
+= Cov<sub><i>p</i></sub>(<i>v</i>, <i>w</i>). Convexity of &beta; &rarr; ln&nbsp;<i>Z</i>
+is Var<sub><i>p</i></sub>(<i>w</i>) &ge; 0, and monotonicity of &beta; &rarr; <i>V</i> is
+the sign of that covariance. &#9633;</p>
+
+<h3>A.5 Theorem 7: the coarse-graining gap is an entropy</h3>
+
+<p>Let the record set be partitioned into blocks <i>B</i> with masses
+&pi;<sub><i>B</i></sub> = <i>Z<sub>B</sub></i>/<i>Z</i> and block scores
+<i>W<sub>B</sub></i> = &beta;<sup>&minus;1</sup>ln&nbsp;<i>Z<sub>B</sub></i>. The exact
+score of the union satisfies ln&nbsp;<i>Z</i> = ln&nbsp;&sum;<sub><i>B</i></sub><i>Z<sub>B</sub></i>,
+so</p>
+
+<div class="eq">
+<i>W</i> &minus; &sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub><i>W<sub>B</sub></i>
+= &beta;<sup>&minus;1</sup>[ln&nbsp;<i>Z</i> &minus; &sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub>ln&nbsp;<i>Z<sub>B</sub></i>]
+= &beta;<sup>&minus;1</sup><i>H</i>(&pi;),
+<span class="num">(A.1)</span>
+</div>
+
+<p>because &sum;<sub><i>B</i></sub>&pi;<sub><i>B</i></sub>ln&nbsp;&pi;<sub><i>B</i></sub>
+= &sum;<sub><i>B</i></sub>(<i>Z<sub>B</sub></i>/<i>Z</i>)ln(<i>Z<sub>B</sub></i>/<i>Z</i>),
+and the rearrangement of the two logarithms gives the stated entropy. Non-negativity is
+Gibbs' inequality, and <i>H</i>(&pi;) &le; ln&nbsp;<i>k</i> for <i>k</i> blocks with
+equality at uniform masses. Dividing by &beta; gives the stated bound
+&beta;<sup>&minus;1</sup>ln&nbsp;<i>k</i>. &#9633;</p>
+
+<p><i>Remark.</i> The gap is an entropy and not a divergence, and the distinction is not
+cosmetic: a divergence would vanish when the block structure is trivial for every
+temperature, whereas <i>H</i>(&pi;) is a genuine information loss at every &beta; and is
+independent of the values.</p>
+
+<h3>A.6 Theorem 8: the chain rule, and the singleton case</h3>
+
+<p>For a two-level partition with blocks <i>A</i> and then sub-blocks inside each, the
+Shannon chain rule gives
+<i>H</i>(&pi;) = <i>H</i>(&pi;<sup>top</sup>) + &sum;<sub><i>a</i></sub>&pi;<sub><i>a</i></sub><i>H</i>(&pi;<sup>sub</sup><sub><i>a</i></sub>)
+[2, ch. 2]. Applying (A.1) at each level and adding shows that the coarse-graining gap is
+additive along the hierarchy, so a tree-shaped summary loses exactly the sum of the
+level entropies. If the finest level consists of singletons, then
+<i>H</i>(&pi;<sup>sub</sup><sub><i>a</i></sub>) is the conditional entropy of the record
+given its block, and the total gap is the entropy of the normalised weights,
+&beta;<sup>&minus;1</sup><i>H</i>(<i>p</i>), which is the maximum information a summary
+that keeps only block aggregates can lose. &#9633;</p>
+
+<h3>A.7 Theorem 9: the logit parametrisation does not amplify error</h3>
+
+<p>Let <i>p</i> and <i>q</i> be weight vectors with <i>q<sub>i</sub></i> proportional to
+<i>p<sub>i</sub></i>(1+&delta;<sub><i>i</i></sub>) and |&delta;<sub><i>i</i></sub>| &le;
+&epsilon; &lt; 1, which is what a relative error &epsilon; in the exponentiated scores
+produces. Write <i>N</i> = &sum;<sub><i>i</i></sub><i>p<sub>i</sub></i>(1+&delta;<sub><i>i</i></sub>),
+so that |<i>N</i>&minus;1| &le; &epsilon; and hence 1/<i>N</i> &le; 1/(1&minus;&epsilon;).
+Then</p>
+
+<div class="eq">
+&frac12;&Vert;<i>q</i>&minus;<i>p</i>&Vert;<sub>1</sub>
+= &frac12;&sum;<sub><i>i</i></sub><i>p<sub>i</sub></i>|(1+&delta;<sub><i>i</i></sub>)/<i>N</i> &minus; 1|
+&le; &frac12;[(&sum;<sub><i>i</i></sub><i>p<sub>i</sub></i>|&delta;<sub><i>i</i></sub>|)/<i>N</i> + |1/<i>N</i> &minus; 1|]
+&le; &epsilon;/(1&minus;&epsilon;),
+<span class="num">(A.2)</span>
+</div>
+
+<p>where the last step uses 1/<i>N</i> &le; 1/(1&minus;&epsilon;) and
+|1/<i>N</i>&minus;1| &le; &epsilon;/(1&minus;&epsilon;). The amplification factor is
+therefore one over one minus epsilon, which is close to one for small errors and diverges
+only as &epsilon; &rarr; 1. &#9633;</p>
+
+<h3>A.8 Theorem 10: sampling and truncation compose</h3>
+
+<p>Let <i>p</i> and <i>q</i> be the true and the estimated weights, with
+TV(<i>p</i>,<i>q</i>) &le; &eta;. Since <i>V</i>(<i>p</i>) &minus; <i>V</i>(<i>q</i>) =
+&sum;<sub><i>i</i></sub>(<i>p<sub>i</sub></i>&minus;<i>q<sub>i</sub></i>)<i>v<sub>i</sub></i>,
+which is a bounded linear functional of the difference, its modulus is at most
+(max<sub><i>i</i></sub><i>v<sub>i</sub></i> &minus; min<sub><i>i</i></sub><i>v<sub>i</sub></i>)
+&middot; TV(<i>p</i>,<i>q</i>), after recentring the values, since the difference sums to
+zero. That gives the multiplier <i>D</i> equal to the range of the values, and the
+composition of two error sources by the triangle inequality, truncated at one because a
+probability is being bounded. Combining with (A.2) for the truncation of the score tail
+gives</p>
+
+<div class="eq">
+|<i>V</i>&#770; &minus; <i>V</i>| &le; <i>D</i> &middot; min(1, &tau;&#770; + &epsilon;/(1&minus;&epsilon;)),
+<span class="num">(A.3)</span>
+</div>
+
+<p>with &tau;&#770; the estimated sampling error and &epsilon; the truncation level. The
+minimum is taken because the right-hand side is a bound on a total-variation distance,
+which cannot exceed one. &#9633;</p>
+
+<h3>A.9 Lemma 2: diagonal states</h3>
+
+<p>For &rho; = diag(<i>p</i>) and &sigma; = diag(<i>q</i>), the difference is diagonal with
+entries <i>p<sub>i</sub></i>&minus;<i>q<sub>i</sub></i>, so the trace norm is
+&sum;<sub><i>i</i></sub>|<i>p<sub>i</sub></i>&minus;<i>q<sub>i</sub></i>| and the first
+identity follows after halving. The spectral decomposition of a diagonal matrix is its
+entrywise decomposition, so the von Neumann entropy &minus;tr(&rho;&nbsp;ln&nbsp;&rho;)
+equals &minus;&sum;<sub><i>i</i></sub><i>p<sub>i</sub></i>ln&nbsp;<i>p<sub>i</sub></i>.
+For the error probability, the Helstrom expression for two states with equal priors is
+(1&minus;&frac12;&Vert;&rho;&minus;&sigma;&Vert;<sub>1</sub>)/2 [5], which with the first
+identity becomes (1&minus;TV)/2. &#9633;</p>
+
+<h3>A.10 Theorem 12, verified numerically</h3>
+
+<p>The counterexample of Section VIII is the pair of four-dimensional vectors
+<i>u</i> = &frac12;(1,1,1,1) and <i>s</i> = &frac12;(1,1,&minus;1,&minus;1), both of unit
+norm and mutually orthogonal. Their outer products have diagonal entries &frac14; in every
+position, so the dephased states coincide exactly. Evaluating the trace distance of the
+dephased pair gives 0.0 to machine precision and of the pure pair gives 1.0 to machine
+precision, a difference of exactly one. The code that performs this check constructs the
+states from the vectors rather than from stored matrices, so the agreement is not a
+consequence of the stored artefact. &#9633;</p>
+
+<h2>Appendix B. Stored scalars</h2>
+
+<p>Every number quoted in the text is recoverable from the files below. The residuals are
+absolute deviations from the predicted identity in the units of the quantity concerned;
+the worst-case columns are maxima over the stated instance count.</p>
+
+<div class="tblwrap"><caption><b>Table B.1.</b> Scalars quoted in the text and the file that stores them.</caption><table>
+
+<thead><tr><th>Quantity</th><th>Value</th><th>File</th></tr></thead>
+<tbody>
+<tr><td>Master seed</td><td>2026110101</td><td>all</td></tr>
+<tr><td>softmax reconstruction error, max over 400</td><td>2.2&times;10<sup>&minus;16</sup></td><td>e1_representability.json</td></tr>
+<tr><td>temperature identity residuals (three derivatives)</td><td>2.98&times;10<sup>&minus;9</sup>, 2.77&times;10<sup>&minus;9</sup>, 8.47&times;10<sup>&minus;7</sup></td><td>e2_temperature_calculus.json</td></tr>
+<tr><td>coarse-graining residual, max over 320</td><td>2.2&times;10<sup>&minus;15</sup></td><td>e3_coarse_graining.json</td></tr>
+<tr><td>sharp gap at &beta; = 1.5 with eight blocks</td><td>ln&nbsp;8/1.5 = 1.3862943611</td><td>e3_coarse_graining.json</td></tr>
+<tr><td>mean realised gap over 320 instances</td><td>1.3063</td><td>e3_coarse_graining.json</td></tr>
+<tr><td>chain-rule residual; entropy identity residual</td><td>8.9&times;10<sup>&minus;16</sup>; 1.8&times;10<sup>&minus;15</sup></td><td>e4_hierarchy.json</td></tr>
+<tr><td>minimum excess in the pure-state inequality</td><td>8.6&times;10<sup>&minus;5</sup></td><td>e5_quantum_boundary.json</td></tr>
+<tr><td>coherence contribution to trace distance, mean</td><td>0.314</td><td>e11_dephasing.json</td></tr>
+<tr><td>Helstrom floor: smallest slack over 400</td><td>1.2&times;10<sup>&minus;5</sup></td><td>e6_helstrom.json</td></tr>
+<tr><td>Helstrom floor: mean slack at &beta; = 8</td><td>0.235</td><td>e6_helstrom.json</td></tr>
+<tr><td>bootstrap coverage, eight cells</td><td>0.892&ndash;0.983</td><td>e7_sampling.json</td></tr>
+<tr><td>saturated certificate at &beta; = 3, m = 10</td><td>1.6267 against error 0.1017</td><td>e7_sampling.json</td></tr>
+<tr><td>von Neumann&ndash;Shannon residual, max over 200</td><td>4.4&times;10<sup>&minus;16</sup></td><td>e8_entropies.json</td></tr>
+<tr><td>logit non-amplification: minimum slack</td><td>0.0197</td><td>e9_nonamplification.json</td></tr>
+<tr><td>composed certificate: median ratio, max ratio</td><td>0.056, 0.308</td><td>e10_pipeline.json</td></tr>
+<tr><td>dephasing: mean full, diagonal, coherence parts</td><td>0.562 = 0.248 + 0.314</td><td>e11_dephasing.json</td></tr>
+<tr><td>hull fraction; max violation</td><td>1.000; &minus;6.4&times;10<sup>&minus;8</sup></td><td>e12_impossibility.json</td></tr>
+<tr><td>worked example: two values and the gap</td><td>3.3333 vs 4.8786; gap 1.5452</td><td>e12_impossibility.json</td></tr>
+<tr><td>minimax: max deviation from half the range</td><td>8.9&times;10<sup>&minus;16</sup></td><td>e12_impossibility.json</td></tr>
+<tr><td>equal weighting vs minimax: mean, max ratio</td><td>1.1277, 1.4634</td><td>e12_impossibility.json</td></tr>
+<tr><td>idempotence defect; homogeneity defect at &lambda; = 2</td><td>&beta;<sup>&minus;1</sup>ln&nbsp;2; 2.1932</td><td>e13_binary_algebra.json</td></tr>
+<tr><td>worked example at &beta; = 1</td><td><i>V</i> = 10.5586, <i>W</i> = 2.2331</td><td>e14_worked_example.json</td></tr>
+<tr><td>d<i>V</i>/d&beta; at &beta; = 1; effective record count</td><td>&minus;0.108319; 4.812</td><td>e14_worked_example.json</td></tr>
+<tr><td>skewness peak</td><td>17.8629 at &beta; = 0.1543</td><td>e14_worked_example.json</td></tr>
+<tr><td>quantisation: violations; max error/bound</td><td>0 of 600; 0.31</td><td>e15_quantisation.json</td></tr>
+<tr><td>quantisation: mass chain at &delta; = 0.01, 0.1</td><td>0.00111, 0.01111</td><td>e15_quantisation.json</td></tr>
+<tr><td>tree merging: max relative value gap; score gap</td><td>3.7&times;10<sup>&minus;16</sup>; 0</td><td>e16_tree_merge.json</td></tr>
+</tbody>
+</table></div>
+
+<h2>Appendix C. Repository manifest</h2>
+
+<div class="tblwrap"><caption><b>Table C.1.</b> Contents of the deposit. The SHA-256 manifest is
+authoritative for what is present; this table says what each path is for.</caption><table>
+
+<thead><tr><th>Path</th><th>Contents</th></tr></thead>
+<tbody>
+<tr><td>otaz_quantum/core.py</td><td>the reference implementation: primitives, the binary and <i>n</i>-ary algebra, the temperature calculus, coarse-graining and hierarchy, the ledger (impossibility, minimax, quantisation, tree merging), the quantum interface, sampling</td></tr>
+<tr><td>experiments/otaz_run_quantum.py</td><td>the sixteen experiments, seeded, writing nineteen JSON files</td></tr>
+<tr><td>tests/test_core.py</td><td>fifty-two unit tests, including seven for the ledger statements</td></tr>
+<tr><td>scripts/otaz_verify_quantum.py</td><td>fifty-six independent checks; does not import the library</td></tr>
+<tr><td>scripts/otaz_checksums.py</td><td>writes and verifies the SHA-256 manifest</td></tr>
+<tr><td>otaz_make_figures.py</td><td>the eight figures, in SVG and PNG, black line art only</td></tr>
+<tr><td>otaz_make_cover.py</td><td>the deposit cover sheet</td></tr>
+<tr><td>paper/</td><td>this manuscript as HTML plus the builder, the two style sheets and the section modules sec_1_front to sec_8_appendix</td></tr>
+<tr><td>results/</td><td>nineteen JSON files, each with the property, the instance count, the residuals and a verdict</td></tr>
+<tr><td>figures/</td><td>fig1&ndash;fig8 in SVG and PNG</td></tr>
+<tr><td>publication/</td><td>the built PDFs, the cover sheet, the one-page Arabic novelty assessment (<i>OTAZ_III_Novelty_Assessment_AR</i>, with its HTML source and build script), metadata and the deposit archives</td></tr>
+<tr><td>docs/</td><td>reading guide, release steps and the colour policy</td></tr>
+<tr><td>README.md, CHANGELOG.md, CITATION.cff</td><td>orientation, version history and citation record</td></tr>
+</tbody>
+</table></div>
+
+<p>Licensing: the text and the results are released under CC BY-NC 4.0; the code is
+released under the PolyForm Noncommercial License 1.0.0. Neither permits commercial use,
+which is deliberate. The repository contains no third-party data.</p>
+
+<h2>References</h2>
+<div class="refs">
+<p>[1] A.-M. B. S. Al-Dawoodiya, &ldquo;OTAZ: Exponentially Weighted Fusion &mdash;
+Algebraic Structure, Numerical Stability, and Reproducible Experiments,&rdquo; preprint,
+Zenodo, 2026, DOI 10.5281/zenodo.23648070. [Companion report: the duplication defect and
+the total-variation bound composed in Corollary 1 originate there.]</p>
+<p>[2] T. M. Cover and J. A. Thomas, <i>Elements of Information Theory</i>, 2nd ed.
+Hoboken, NJ: Wiley, 2006. [Entropy bounds, the chain rule, the maximum-entropy
+principle.]</p>
+<p>[3] S. Boyd and L. Vandenberghe, <i>Convex Optimization</i>. Cambridge, U.K.: Cambridge
+University Press, 2004. [Convexity of the log-partition function; log-sum-exp as a smooth
+maximum.]</p>
+<p>[4] M. A. Nielsen and I. L. Chuang, <i>Quantum Computation and Quantum Information</i>.
+Cambridge, U.K.: Cambridge University Press, 2000. [Trace distance, fidelity,
+pinching.]</p>
+<p>[5] C. W. Helstrom, <i>Quantum Detection and Estimation Theory</i>. New York: Academic
+Press, 1976. [Minimum error probability for two states with equal priors.]</p>
+<p>[6] R. Bhatia, <i>Matrix Analysis</i>. New York: Springer, 1997. [Pinching inequality
+and trace-norm inequalities.]</p>
+<p>[7] R. T. Rockafellar and R. J.-B. Wets, <i>Variational Analysis</i>. Berlin: Springer,
+1998. [Conjugacy and smoothness of the log-sum-exp function; the convex-analytic reading
+of Theorem 6.]</p>
+<p>[8] P. Blanchard, N. J. Higham, and T. Higham, &ldquo;Accurately computing the
+log-sum-exp and softmax functions,&rdquo; <i>IMA Journal of Numerical Analysis</i>,
+vol. 41, no. 4, pp. 2311&ndash;2330, 2021, doi:10.1093/imanum/draa038.</p>
+<p>[9] M. Milakov and N. Gimelshein, &ldquo;Online normalizer calculation for
+softmax,&rdquo; arXiv:1805.02867, 2018. [One-pass streaming evaluation of the partition
+sum.]</p>
+<p>[10] S. Cohen and V. Fausti, &ldquo;Hilbert metric and total variation in probability
+measures,&rdquo; arXiv:2309.02413, 2023. [Sharp total-variation bounds via the Hilbert
+metric.]</p>
+<p>[11] S. Somasundaram, C. Guille-Escuret, J. M. Moreno, E. Liu, and E. Xing,
+&ldquo;Softmax geometry and the Hilbert metric,&rdquo; arXiv:2610.17588, 2026.
+[Contemporary treatment of the same bound; cited to avoid a priority claim.]</p>
+<p>[12] X. Wang, R. J. Hyndman, B. Li, and Y. Kang, &ldquo;Forecast combinations: an over
+50-year review,&rdquo; arXiv:2205.04216, 2022. [Why equal weighting is a hard baseline;
+what truncation does to a combined forecast.]</p>
+<p>[13] B. Efron and R. J. Tibshirani, <i>An Introduction to the Bootstrap</i>. New York:
+Chapman &amp; Hall, 1993. [The resampling procedure of the coverage study.]</p>
+<p>[14] T. Weissman, E. Ordentlich, G. Seroussi, S. Verd&uacute;, and M. J. Weinberger,
+&ldquo;Inequalities for the <i>L</i><sub>1</sub> deviation of the empirical
+distribution,&rdquo; Hewlett-Packard Laboratories Technical Report HPL-2003-97R1, 2003.
+[The statistical background to the sampling certificate.]</p>
+<p>[15] C. R. Harris <i>et al.</i>, &ldquo;Array programming with NumPy,&rdquo;
+<i>Nature</i>, vol. 585, pp. 357&ndash;362, 2020. [Software.]</p>
+<p>[16] P. K. Agarwal, G. Cormode, Z. Huang, J. M. Phillips, Z. Wei, and K. Yi,
+&ldquo;Mergeable summaries,&rdquo; <i>ACM Transactions on Database Systems</i>, vol. 38,
+no. 4, art. 26, 2013. [Formal mergeability; positive and negative results for concrete
+summaries; the frame for Theorem 3.]</p>
+<p>[17] G. Cormode, &ldquo;Data sketching,&rdquo; <i>Communications of the ACM</i>,
+vol. 60, no. 9, pp. 48&ndash;55, 2017. [Linear sketches and their mergeability; why the
+ledger is one.]</p>
+<p>[18] M. J. Wainwright and M. I. Jordan, &ldquo;Graphical models, exponential families,
+and variational inference,&rdquo; <i>Foundations and Trends in Machine Learning</i>,
+vol. 1, no. 1&ndash;2, pp. 1&ndash;305, 2008. [Additive sufficient statistics; the
+Gibbs variational principle; the content of Theorems 1 and 7.]</p>
+<p>[19] Y. Zhang, J. C. Duchi, M. I. Jordan, and M. J. Wainwright,
+&ldquo;Information-theoretic lower bounds for distributed statistical estimation with
+communication constraints,&rdquo; in <i>Advances in Neural Information Processing
+Systems</i>, 2013. [Minimax rates as a function of a bit budget; the template for the
+lower-bound side of Theorem 3.]</p>
+<p>[20] R. A. Jacobs, M. I. Jordan, S. J. Nowlan, and G. E. Hinton, &ldquo;Adaptive
+mixtures of local experts,&rdquo; <i>Neural Computation</i>, vol. 3, no. 1, pp. 79&ndash;87,
+1991. [Soft gating; the gate logit in the role of the score.]</p>
+<p>[21] G. E. Hinton, &ldquo;Training products of experts by minimizing contrastive
+divergence,&rdquo; <i>Neural Computation</i>, vol. 14, no. 8, pp. 1771&ndash;1800, 2002.
+[Products of experts; the same log-domain arithmetic.]</p>
+<p>[22] S. Thrun, W. Burgard, and D. Fox, <i>Probabilistic Robotics</i>. Cambridge, MA:
+MIT Press, 2005. [Particle filters carry log-weights and compose them by this recursion;
+the fused score is the estimated log-evidence.]</p>
+</div>
+</body></html>
